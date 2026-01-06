@@ -178,15 +178,20 @@ export function ComparisonReport({
         </div>
       </Card>
 
-      {/* CTA */}
-      <div className="text-center py-6 print:hidden">
-        <p className="text-muted-foreground mb-4">
-          Want to learn how to get more value for your investment fees?
-        </p>
-        <Button size="lg" className="bg-gradient-gold hover:opacity-90 text-primary-foreground font-semibold shadow-gold">
-          Schedule a Consultation
-        </Button>
-      </div>
+      {/* CTA - only show if fees over $5,000 */}
+      {totalFees > 5000 && (
+        <div className="text-center py-6 print:hidden">
+          <p className="font-display text-xl font-semibold mb-2">
+            There might be a better way.
+          </p>
+          <p className="text-muted-foreground mb-4">
+            Let's talk.
+          </p>
+          <Button size="lg" className="bg-gradient-gold hover:opacity-90 text-primary-foreground font-semibold shadow-gold">
+            Schedule a Consultation
+          </Button>
+        </div>
+      )}
     </div>
   );
 }
