@@ -2,7 +2,7 @@ import { Star } from 'lucide-react';
 
 export function Header() {
   return (
-    <header className="relative overflow-hidden border-b border-border/50 bg-gradient-navy">
+    <header className="relative overflow-hidden border-b border-border/50 bg-gradient-purple">
       <div className="absolute inset-0 star-bg opacity-30" />
       <div className="container relative py-6 md:py-8">
         <div className="flex items-center justify-between">

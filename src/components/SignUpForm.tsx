@@ -44,14 +44,14 @@ export function SignUpForm({ onSignUp }: SignUpFormProps) {
         <div className="flex items-center justify-center gap-3">
           <Star className="h-10 w-10 text-primary fill-primary" />
           <span className="font-display text-3xl font-bold tracking-tight">
-            Black Star <span className="text-gradient-gold">Wealth</span>
+            Black Star <span className="text-gradient-green">Wealth</span>
           </span>
         </div>
 
         {/* Hero Section */}
         <div className="text-center space-y-4">
           <h1 className="font-display text-3xl md:text-4xl lg:text-5xl font-bold leading-tight">
-            Are You <span className="text-gradient-gold">Curious</span>?
+            Are You <span className="text-gradient-green">Curious</span>?
           </h1>
           <p className="text-xl md:text-2xl text-muted-foreground max-w-xl mx-auto">
             What are the total fees you're paying for your mutual fund or seg fund portfolio?
@@ -75,7 +75,7 @@ export function SignUpForm({ onSignUp }: SignUpFormProps) {
         </div>
 
         {/* Sign Up Form */}
-        <Card className="p-6 md:p-8 bg-card/50 backdrop-blur border-primary/20 shadow-gold">
+        <Card className="p-6 md:p-8 bg-card/50 backdrop-blur border-primary/20 shadow-green">
           <h2 className="font-display text-xl font-semibold mb-6 text-center">
             Get Access to the Fee Calculator
           </h2>
@@ -124,7 +124,7 @@ export function SignUpForm({ onSignUp }: SignUpFormProps) {
             <Button 
               type="submit" 
               size="lg"
-              className="w-full bg-gradient-gold hover:opacity-90 text-primary-foreground font-semibold shadow-gold gap-2"
+              className="w-full bg-gradient-green hover:opacity-90 text-primary-foreground font-semibold shadow-green gap-2"
             >
               Calculate My Fees
               <ArrowRight className="w-4 h-4" />
