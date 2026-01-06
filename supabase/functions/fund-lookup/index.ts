@@ -24,8 +24,9 @@ Deno.serve(async (req) => {
   try {
     const { fundCode } = await req.json() as FundLookupRequest;
 
+    // Input validation - check for empty input
     if (!fundCode || fundCode.trim() === '') {
-      console.log('Error: Fund code is required');
+      console.log('[fund-lookup] Validation failed: empty fund code');
       return new Response(
         JSON.stringify({ success: false, fundCode: '', error: 'Fund code is required' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -33,21 +34,40 @@ Deno.serve(async (req) => {
     }
 
     const cleanedCode = fundCode.trim().toUpperCase();
-    console.log(`Looking up fund: ${cleanedCode}`);
+
+    // Validate fund code length (typically 3-20 characters)
+    if (cleanedCode.length < 3 || cleanedCode.length > 20) {
+      console.log('[fund-lookup] Validation failed: invalid length');
+      return new Response(
+        JSON.stringify({ success: false, fundCode: cleanedCode, error: 'Invalid fund code length' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Validate fund code format (alphanumeric only)
+    if (!/^[A-Z0-9]+$/.test(cleanedCode)) {
+      console.log('[fund-lookup] Validation failed: invalid characters');
+      return new Response(
+        JSON.stringify({ success: false, fundCode: cleanedCode, error: 'Fund code must contain only letters and numbers' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    console.log(`[fund-lookup] Looking up fund: ${cleanedCode}`);
 
     // Step 1: Use Firecrawl to search for the fund fact sheet
     const firecrawlApiKey = Deno.env.get('FIRECRAWL_API_KEY');
     if (!firecrawlApiKey) {
-      console.error('FIRECRAWL_API_KEY not configured');
+      console.error('[fund-lookup] FIRECRAWL_API_KEY not configured');
       return new Response(
-        JSON.stringify({ success: false, fundCode: cleanedCode, error: 'Search service not configured' }),
+        JSON.stringify({ success: false, fundCode: cleanedCode, error: 'Unable to process request. Please try again later.' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
     // Search for Canadian fund fact sheet
     const searchQuery = `"${cleanedCode}" fund facts MER management expense ratio Canada`;
-    console.log(`Searching with query: ${searchQuery}`);
+    console.log(`[fund-lookup] Searching for fund: ${cleanedCode}`);
 
     const searchResponse = await fetch('https://api.firecrawl.dev/v1/search', {
       method: 'POST',
@@ -65,10 +85,9 @@ Deno.serve(async (req) => {
     });
 
     const searchData = await searchResponse.json();
-    console.log(`Search response status: ${searchResponse.status}`);
 
     if (!searchResponse.ok || !searchData.success) {
-      console.error('Search failed:', searchData);
+      console.error('[fund-lookup] Search failed for fund:', cleanedCode, 'status:', searchResponse.status);
       return new Response(
         JSON.stringify({ 
           success: false, 
@@ -85,7 +104,7 @@ Deno.serve(async (req) => {
       .join('\n\n---\n\n') || '';
 
     if (!combinedContent || combinedContent.length < 50) {
-      console.log('No substantial content found in search results');
+      console.log('[fund-lookup] No substantial content found for fund:', cleanedCode);
       return new Response(
         JSON.stringify({ 
           success: false, 
@@ -96,14 +115,14 @@ Deno.serve(async (req) => {
       );
     }
 
-    console.log(`Found content, length: ${combinedContent.length} chars`);
+    console.log(`[fund-lookup] Found content for ${cleanedCode}, processing...`);
 
     // Step 2: Use AI to extract the MER from the content
     const lovableApiKey = Deno.env.get('LOVABLE_API_KEY');
     if (!lovableApiKey) {
-      console.error('LOVABLE_API_KEY not configured');
+      console.error('[fund-lookup] LOVABLE_API_KEY not configured');
       return new Response(
-        JSON.stringify({ success: false, fundCode: cleanedCode, error: 'AI service not configured' }),
+        JSON.stringify({ success: false, fundCode: cleanedCode, error: 'Unable to process request. Please try again later.' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -168,15 +187,14 @@ Return ONLY the JSON object, no other text.`
     });
 
     const aiData = await aiResponse.json();
-    console.log('AI response received');
 
     if (!aiResponse.ok) {
-      console.error('AI request failed:', aiData);
+      console.error('[fund-lookup] AI processing failed for fund:', cleanedCode, 'status:', aiResponse.status);
       return new Response(
         JSON.stringify({ 
           success: false, 
           fundCode: cleanedCode, 
-          error: 'Failed to analyze fund data' 
+          error: 'Unable to analyze fund data. Please try again later.' 
         }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
@@ -189,7 +207,7 @@ Return ONLY the JSON object, no other text.`
       try {
         extractedData = JSON.parse(aiData.choices[0].message.tool_calls[0].function.arguments);
       } catch (e) {
-        console.error('Failed to parse tool call arguments:', e);
+        console.error('[fund-lookup] Failed to parse AI response for fund:', cleanedCode);
       }
     }
 
@@ -202,23 +220,23 @@ Return ONLY the JSON object, no other text.`
           extractedData = JSON.parse(jsonMatch[0]);
         }
       } catch (e) {
-        console.error('Failed to parse content as JSON:', e);
+        console.error('[fund-lookup] Failed to parse AI content for fund:', cleanedCode);
       }
     }
 
     if (!extractedData || extractedData.error || extractedData.mer === null) {
-      console.log('Could not extract MER:', extractedData);
+      console.log('[fund-lookup] Could not extract MER for fund:', cleanedCode);
       return new Response(
         JSON.stringify({ 
           success: false, 
           fundCode: cleanedCode, 
-          error: extractedData?.error || 'Could not determine MER from available documents. Please verify the fund code.' 
+          error: 'Could not determine MER from available documents. Please verify the fund code.' 
         }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    console.log(`Successfully extracted MER: ${extractedData.mer}% for ${extractedData.fundName}`);
+    console.log(`[fund-lookup] Successfully extracted MER for ${cleanedCode}`);
 
     const response: FundLookupResponse = {
       success: true,
@@ -234,10 +252,9 @@ Return ONLY the JSON object, no other text.`
     );
 
   } catch (error) {
-    console.error('Error in fund-lookup function:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+    console.error('[fund-lookup] Unexpected error:', error instanceof Error ? error.message : 'Unknown error');
     return new Response(
-      JSON.stringify({ success: false, fundCode: '', error: errorMessage }),
+      JSON.stringify({ success: false, fundCode: '', error: 'An unexpected error occurred. Please try again later.' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
