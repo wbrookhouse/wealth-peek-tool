@@ -1,18 +1,22 @@
+import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Header } from '@/components/Header';
 import { StepIndicator } from '@/components/StepIndicator';
-import { SignUpForm } from '@/components/SignUpForm';
 import { InvestmentForm } from '@/components/InvestmentForm';
 import { ServicesChecklist } from '@/components/ServicesChecklist';
 import { ComparisonReport } from '@/components/ComparisonReport';
 import { Button } from '@/components/ui/button';
 import { useCalculator } from '@/hooks/useCalculator';
 import { ArrowLeft, ArrowRight } from 'lucide-react';
+import { UserInfo } from '@/types/calculator';
 
 const STEP_LABELS = ['Your Investments', 'Current Services', 'Your Report'];
 
-const Index = () => {
+const Calculator = () => {
+  const navigate = useNavigate();
+  const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
+  
   const {
-    userInfo,
     investments,
     services,
     meetingsPerYear,
@@ -20,7 +24,6 @@ const Index = () => {
     totalInvested,
     totalFees,
     weightedMER,
-    signUp,
     addInvestment,
     removeInvestment,
     updateInvestmentMER,
@@ -29,9 +32,20 @@ const Index = () => {
     setCurrentStep
   } = useCalculator();
 
-  // Show sign-up form if user hasn't signed up
+  // Check for user info on mount
+  useEffect(() => {
+    const stored = sessionStorage.getItem('userInfo');
+    if (stored) {
+      setUserInfo(JSON.parse(stored));
+    } else {
+      // Redirect to sign up if no user info
+      navigate('/');
+    }
+  }, [navigate]);
+
+  // Don't render until we confirm user is signed in
   if (!userInfo) {
-    return <SignUpForm onSignUp={signUp} />;
+    return null;
   }
 
   const canProceed = () => {
@@ -130,4 +144,4 @@ const Index = () => {
   );
 };
 
-export default Index;
+export default Calculator;
