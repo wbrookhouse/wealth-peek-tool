@@ -1,16 +1,13 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Star, ArrowRight, TrendingUp, DollarSign, HelpCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
-import { UserInfo } from '@/types/calculator';
 
-interface SignUpFormProps {
-  onSignUp: (info: UserInfo) => void;
-}
-
-export function SignUpForm({ onSignUp }: SignUpFormProps) {
+const Auth = () => {
+  const navigate = useNavigate();
   const [firstName, setFirstName] = useState('');
   const [email, setEmail] = useState('');
   const [hasIncorporatedBusiness, setHasIncorporatedBusiness] = useState(false);
@@ -30,11 +27,15 @@ export function SignUpForm({ onSignUp }: SignUpFormProps) {
       return;
     }
     
-    onSignUp({
+    // Store user info in sessionStorage for the calculator
+    sessionStorage.setItem('userInfo', JSON.stringify({
       firstName: firstName.trim(),
       email: email.trim(),
       hasIncorporatedBusiness
-    });
+    }));
+    
+    // Navigate to the calculator
+    navigate('/calculator');
   };
 
   return (
@@ -138,4 +139,6 @@ export function SignUpForm({ onSignUp }: SignUpFormProps) {
       </div>
     </div>
   );
-}
+};
+
+export default Auth;
