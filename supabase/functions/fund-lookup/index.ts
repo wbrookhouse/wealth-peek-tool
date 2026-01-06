@@ -157,32 +157,22 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Search for fund MER - prioritize Morningstar as primary source
-    const searchQuery = `site:morningstar.ca "${cleanedCode}" MER management expense ratio`;
-    console.log(`[fund-lookup] Searching Morningstar for fund: ${cleanedCode}`);
+    // Search strategies in order of preference
+    const searchStrategies = [
+      // Strategy 1: Direct Morningstar search
+      `${cleanedCode} morningstar.ca fund MER`,
+      // Strategy 2: Fund fact sheet search  
+      `"${cleanedCode}" "fund facts" MER Canada`,
+      // Strategy 3: Broader fund search
+      `${cleanedCode} mutual fund MER management expense ratio Canada`,
+    ];
 
-    let searchResponse = await fetch('https://api.firecrawl.dev/v1/search', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${firecrawlApiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        query: searchQuery,
-        limit: 5,
-        scrapeOptions: {
-          formats: ['markdown']
-        }
-      }),
-    });
-
-    let searchData = await searchResponse.json();
-
-    // If Morningstar search didn't find results, try broader search
-    if (!searchResponse.ok || !searchData.success || !searchData.data?.length) {
-      console.log(`[fund-lookup] Morningstar search empty for ${cleanedCode}, trying broader search...`);
+    let searchData: any = null;
+    let searchResponse!: Response;
+    
+    for (const searchQuery of searchStrategies) {
+      console.log(`[fund-lookup] Trying search: ${searchQuery}`);
       
-      const broadSearchQuery = `"${cleanedCode}" fund facts MER management expense ratio Canada`;
       searchResponse = await fetch('https://api.firecrawl.dev/v1/search', {
         method: 'POST',
         headers: {
@@ -190,15 +180,26 @@ Deno.serve(async (req) => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          query: broadSearchQuery,
+          query: searchQuery,
           limit: 5,
+          lang: 'en',
+          country: 'CA',
           scrapeOptions: {
-            formats: ['markdown']
+            formats: ['markdown'],
+            onlyMainContent: true
           }
         }),
       });
-      
+
       searchData = await searchResponse.json();
+      
+      console.log(`[fund-lookup] Search response: success=${searchData.success}, results=${searchData.data?.length || 0}`);
+      
+      // If we found results, break out of the loop
+      if (searchResponse.ok && searchData.success && searchData.data?.length > 0) {
+        console.log(`[fund-lookup] Found ${searchData.data.length} results with query: ${searchQuery}`);
+        break;
+      }
     }
 
     if (!searchResponse.ok || !searchData.success) {
