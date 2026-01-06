@@ -22,8 +22,8 @@ export function StepIndicator({ currentStep, totalSteps, labels }: StepIndicator
                 <div
                   className={cn(
                     "w-10 h-10 rounded-full flex items-center justify-center font-semibold text-sm transition-all duration-300",
-                    isCompleted && "bg-primary text-primary-foreground shadow-gold",
-                    isCurrent && "bg-primary text-primary-foreground ring-4 ring-primary/30 shadow-gold",
+                    isCompleted && "bg-primary text-primary-foreground shadow-green",
+                    isCurrent && "bg-primary text-primary-foreground ring-4 ring-primary/30 shadow-green",
                     !isCompleted && !isCurrent && "bg-secondary text-muted-foreground"
                   )}
                 >

@@ -67,7 +67,7 @@ export function InvestmentForm({
     <div className="space-y-6">
       <div className="text-center space-y-2">
         <h2 className="font-display text-2xl md:text-3xl font-bold">
-          What Are You <span className="text-gradient-gold">Really Paying</span> in Fees?
+          What Are You <span className="text-gradient-green">Really Paying</span> in Fees?
         </h2>
         <p className="text-muted-foreground max-w-xl mx-auto">
           Enter your fund codes and investment amounts below. We'll search for the MER and calculate your total fees.
@@ -111,7 +111,7 @@ export function InvestmentForm({
             <Button 
               type="submit" 
               disabled={!fundCode.trim() || !amount || isLoading}
-              className="w-full sm:w-auto bg-gradient-gold hover:opacity-90 text-primary-foreground font-semibold shadow-gold"
+              className="w-full sm:w-auto bg-gradient-green hover:opacity-90 text-primary-foreground font-semibold shadow-green"
             >
               {isLoading ? (
                 <Loader2 className="w-4 h-4 animate-spin" />

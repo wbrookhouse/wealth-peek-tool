@@ -117,7 +117,7 @@ const Index = () => {
               <Button
                 onClick={nextStep}
                 disabled={!canProceed()}
-                className="gap-2 bg-gradient-gold hover:opacity-90 text-primary-foreground font-semibold shadow-gold"
+                className="gap-2 bg-gradient-green hover:opacity-90 text-primary-foreground font-semibold shadow-green"
               >
                 Continue
                 <ArrowRight className="w-4 h-4" />

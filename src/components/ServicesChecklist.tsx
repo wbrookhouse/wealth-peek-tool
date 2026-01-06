@@ -22,7 +22,7 @@ export function ServicesChecklist({
     <div className="space-y-6">
       <div className="text-center space-y-2">
         <h2 className="font-display text-2xl md:text-3xl font-bold">
-          What Services Do You <span className="text-gradient-gold">Currently Receive</span>?
+          What Services Do You <span className="text-gradient-green">Currently Receive</span>?
         </h2>
         <p className="text-muted-foreground max-w-xl mx-auto">
           Check the services your current advisor provides. This helps us understand what you're getting for your fees.

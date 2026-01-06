@@ -35,7 +35,7 @@ export function ComparisonReport({
       <div className="flex items-center justify-between print:hidden">
         <div>
           <h2 className="font-display text-2xl md:text-3xl font-bold">
-            Your <span className="text-gradient-gold">Fee Report</span>
+            Your <span className="text-gradient-green">Fee Report</span>
           </h2>
           <p className="text-muted-foreground">
             Review your current fees and services
@@ -57,9 +57,9 @@ export function ComparisonReport({
       </div>
 
       {/* Total Fees Highlight */}
-      <Card className="p-8 bg-gradient-navy border-primary/30 shadow-gold text-center">
+      <Card className="p-8 bg-gradient-purple border-primary/30 shadow-green text-center">
         <h3 className="font-display text-xl font-semibold mb-2">Your Total Annual Fees</h3>
-        <p className="text-5xl md:text-6xl font-bold text-gradient-gold mb-2">
+        <p className="text-5xl md:text-6xl font-bold text-gradient-green mb-2">
           {formatCurrency(totalFees)}
         </p>
         <p className="text-muted-foreground">per year</p>
@@ -187,7 +187,7 @@ export function ComparisonReport({
           <p className="text-muted-foreground mb-4">
             Let's talk.
           </p>
-          <Button size="lg" className="bg-gradient-gold hover:opacity-90 text-primary-foreground font-semibold shadow-gold">
+          <Button size="lg" className="bg-gradient-green hover:opacity-90 text-primary-foreground font-semibold shadow-green">
             Schedule a Consultation
           </Button>
         </div>
