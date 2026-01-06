@@ -1,35 +1,33 @@
-import { Printer, Check, X, TrendingDown, TrendingUp, Star } from 'lucide-react';
+import { Printer, Check, X, Star, Calendar } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Investment, ServiceItem, PricingOption, PRICING_TIERS } from '@/types/calculator';
+import { Investment, ServiceItem, MEETING_FREQUENCY_OPTIONS } from '@/types/calculator';
 import { formatCurrency, formatPercent } from '@/lib/fundLookup';
-import { cn } from '@/lib/utils';
 
 interface ComparisonReportProps {
   investments: Investment[];
   services: ServiceItem[];
-  selectedPricing: PricingOption | null;
+  meetingsPerYear: number;
   totalInvested: number;
   totalFees: number;
   weightedMER: number;
-  savings: number;
 }
 
 export function ComparisonReport({
   investments,
   services,
-  selectedPricing,
+  meetingsPerYear,
   totalInvested,
   totalFees,
-  weightedMER,
-  savings
+  weightedMER
 }: ComparisonReportProps) {
   const handlePrint = () => {
     window.print();
   };
 
   const checkedServices = services.filter(s => s.checked);
-  const isSaving = savings > 0;
+  const uncheckedServices = services.filter(s => !s.checked);
+  const meetingLabel = MEETING_FREQUENCY_OPTIONS.find(o => o.value === meetingsPerYear)?.label || 'Unknown';
 
   return (
     <div className="space-y-8 print:space-y-6">
@@ -37,10 +35,10 @@ export function ComparisonReport({
       <div className="flex items-center justify-between print:hidden">
         <div>
           <h2 className="font-display text-2xl md:text-3xl font-bold">
-            Your <span className="text-gradient-gold">Fee Comparison</span> Report
+            Your <span className="text-gradient-gold">Fee Report</span>
           </h2>
           <p className="text-muted-foreground">
-            Review your current fees vs. Black Star Wealth
+            Review your current fees and services
           </p>
         </div>
         <Button onClick={handlePrint} variant="outline" className="gap-2">
@@ -54,9 +52,28 @@ export function ComparisonReport({
         <Star className="h-8 w-8 text-primary fill-primary" />
         <div>
           <h1 className="font-display text-2xl font-bold">Black Star Wealth</h1>
-          <p className="text-sm text-muted-foreground">Fee Comparison Report</p>
+          <p className="text-sm text-muted-foreground">Fee Report</p>
         </div>
       </div>
+
+      {/* Total Fees Highlight */}
+      <Card className="p-8 bg-gradient-navy border-primary/30 shadow-gold text-center">
+        <h3 className="font-display text-xl font-semibold mb-2">Your Total Annual Fees</h3>
+        <p className="text-5xl md:text-6xl font-bold text-gradient-gold mb-2">
+          {formatCurrency(totalFees)}
+        </p>
+        <p className="text-muted-foreground">per year</p>
+        <div className="mt-4 flex flex-wrap justify-center gap-6 text-sm">
+          <div>
+            <span className="text-muted-foreground">Total Invested: </span>
+            <span className="font-semibold">{formatCurrency(totalInvested)}</span>
+          </div>
+          <div>
+            <span className="text-muted-foreground">Average MER: </span>
+            <span className="font-semibold">{formatPercent(weightedMER)}</span>
+          </div>
+        </div>
+      </Card>
 
       {/* Investment Summary */}
       <Card className="p-6 bg-card/50 backdrop-blur border-border/50 print:bg-transparent print:border print:border-gray-300">
@@ -97,123 +114,74 @@ export function ComparisonReport({
         </div>
       </Card>
 
-      {/* Fee Comparison */}
+      {/* Services Received */}
       <div className="grid md:grid-cols-2 gap-6">
         <Card className="p-6 bg-card/50 backdrop-blur border-border/50 print:bg-transparent print:border print:border-gray-300">
-          <h3 className="font-display text-lg font-semibold mb-4">Current Fees</h3>
-          <div className="space-y-4">
-            <div className="text-center py-6 bg-secondary/30 rounded-lg">
-              <p className="text-4xl font-bold">{formatCurrency(totalFees)}</p>
-              <p className="text-muted-foreground">per year</p>
-            </div>
-            
-            <div>
-              <p className="text-sm font-medium mb-2">Services you currently receive:</p>
-              {checkedServices.length > 0 ? (
-                <ul className="space-y-1">
-                  {checkedServices.map(service => (
-                    <li key={service.id} className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <Check className="w-4 h-4 text-green-500" />
-                      {service.name}
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="text-sm text-muted-foreground italic">No services selected</p>
-              )}
-            </div>
+          <h3 className="font-display text-lg font-semibold mb-4 flex items-center gap-2">
+            <Check className="w-5 h-5 text-green-500" />
+            Services You Receive
+          </h3>
+          {checkedServices.length > 0 ? (
+            <ul className="space-y-2">
+              {checkedServices.map(service => (
+                <li key={service.id} className="flex items-center gap-2 text-sm">
+                  <Check className="w-4 h-4 text-green-500 flex-shrink-0" />
+                  {service.name}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-sm text-muted-foreground italic">No services selected</p>
+          )}
+          
+          <div className="mt-4 pt-4 border-t border-border/50 flex items-center gap-2">
+            <Calendar className="w-4 h-4 text-primary" />
+            <span className="text-sm">
+              Advisor meetings: <span className="font-medium">{meetingLabel}</span>
+            </span>
           </div>
         </Card>
 
-        <Card className={cn(
-          "p-6 border-primary/50 shadow-gold print:bg-transparent print:border print:border-gray-300",
-          "bg-gradient-to-br from-card to-primary/5"
-        )}>
+        <Card className="p-6 bg-card/50 backdrop-blur border-border/50 print:bg-transparent print:border print:border-gray-300">
           <h3 className="font-display text-lg font-semibold mb-4 flex items-center gap-2">
-            <Star className="w-5 h-5 text-primary fill-primary" />
-            Black Star Wealth - {selectedPricing?.name}
+            <X className="w-5 h-5 text-destructive" />
+            Services You're Not Receiving
           </h3>
-          <div className="space-y-4">
-            <div className="text-center py-6 bg-primary/10 rounded-lg">
-              <p className="text-4xl font-bold text-gradient-gold">
-                {formatCurrency(selectedPricing?.price || 0)}
-              </p>
-              <p className="text-muted-foreground">per year</p>
-            </div>
-            
-            <div>
-              <p className="text-sm font-medium mb-2">Services included:</p>
-              <ul className="space-y-1">
-                {selectedPricing?.features.slice(0, 8).map((feature, i) => (
-                  <li key={i} className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Check className="w-4 h-4 text-primary" />
-                    {feature}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
+          {uncheckedServices.length > 0 ? (
+            <ul className="space-y-2">
+              {uncheckedServices.map(service => (
+                <li key={service.id} className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <X className="w-4 h-4 text-destructive flex-shrink-0" />
+                  {service.name}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-sm text-green-500">You're receiving all services!</p>
+          )}
         </Card>
       </div>
 
-      {/* Savings Summary */}
-      <Card className={cn(
-        "p-8 text-center",
-        isSaving 
-          ? "bg-gradient-to-br from-green-500/10 to-green-600/5 border-green-500/30" 
-          : "bg-gradient-to-br from-primary/10 to-primary/5 border-primary/30"
-      )}>
-        <div className="flex items-center justify-center gap-2 mb-2">
-          {isSaving ? (
-            <TrendingDown className="w-6 h-6 text-green-500" />
-          ) : (
-            <TrendingUp className="w-6 h-6 text-primary" />
-          )}
-          <h3 className="font-display text-xl font-semibold">
-            {isSaving ? 'Your Potential Savings' : 'Investment in Comprehensive Service'}
-          </h3>
-        </div>
-        
-        <p className={cn(
-          "text-5xl font-bold my-4",
-          isSaving ? "text-green-500" : "text-gradient-gold"
-        )}>
-          {isSaving ? formatCurrency(savings) : formatCurrency(Math.abs(savings))}
-          <span className="text-lg font-normal text-muted-foreground"> /year</span>
-        </p>
-        
-        <p className="text-muted-foreground max-w-md mx-auto">
-          {isSaving 
-            ? "By switching to Black Star Wealth, you could save this amount annually while receiving comprehensive financial planning services."
-            : "While Black Star Wealth may cost more than embedded fees, you'll receive transparent, comprehensive financial planning with a clear picture of what you're paying for."
-          }
-        </p>
-      </Card>
-
-      {/* Missing Services */}
-      {checkedServices.length < services.length && (
-        <Card className="p-6 bg-card/50 backdrop-blur border-border/50 print:bg-transparent print:border print:border-gray-300">
-          <h3 className="font-display text-lg font-semibold mb-4">
-            Services You're Missing
-          </h3>
-          <p className="text-muted-foreground text-sm mb-4">
-            Based on your selections, you may not be receiving these valuable services:
+      {/* Summary */}
+      <Card className="p-6 bg-gradient-to-br from-primary/10 to-primary/5 border-primary/30">
+        <h3 className="font-display text-lg font-semibold mb-4 text-center">Summary</h3>
+        <div className="text-center space-y-2">
+          <p className="text-muted-foreground">
+            You are paying <span className="font-bold text-primary">{formatCurrency(totalFees)}</span> per year in fees
           </p>
-          <div className="grid sm:grid-cols-2 gap-2">
-            {services.filter(s => !s.checked).map(service => (
-              <div key={service.id} className="flex items-center gap-2 text-sm">
-                <X className="w-4 h-4 text-destructive" />
-                <span className="text-muted-foreground">{service.name}</span>
-              </div>
-            ))}
-          </div>
-        </Card>
-      )}
+          <p className="text-muted-foreground">
+            You are receiving <span className="font-bold text-primary">{checkedServices.length}</span> of {services.length} possible services
+          </p>
+          <p className="text-muted-foreground">
+            You meet with your advisor <span className="font-bold text-primary">{meetingLabel.toLowerCase()}</span>
+          </p>
+        </div>
+      </Card>
 
       {/* CTA */}
       <div className="text-center py-6 print:hidden">
         <p className="text-muted-foreground mb-4">
-          Ready to take control of your financial future?
+          Want to learn how to get more value for your investment fees?
         </p>
         <Button size="lg" className="bg-gradient-gold hover:opacity-90 text-primary-foreground font-semibold shadow-gold">
           Schedule a Consultation
