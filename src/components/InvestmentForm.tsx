@@ -231,23 +231,6 @@ export function InvestmentForm({
             ))}
           </div>
 
-          {/* Summary */}
-          <Card className="p-6 bg-gradient-navy border-primary/30 shadow-gold">
-            <div className="grid grid-cols-3 gap-6 text-center">
-              <div>
-                <p className="text-sm text-muted-foreground mb-1">Total Invested</p>
-                <p className="text-2xl font-bold">{formatCurrency(totalInvested)}</p>
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground mb-1">Weighted MER</p>
-                <p className="text-2xl font-bold">{formatPercent(weightedMER)}</p>
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground mb-1">Annual Fees</p>
-                <p className="text-2xl font-bold text-gradient-gold">{formatCurrency(totalFees)}</p>
-              </div>
-            </div>
-          </Card>
         </div>
       )}
     </div>
