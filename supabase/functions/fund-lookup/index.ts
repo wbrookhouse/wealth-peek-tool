@@ -16,9 +16,101 @@ interface FundLookupResponse {
   source?: string;
 }
 
+// Simple in-memory rate limiter
+// Limits: 10 requests per IP per minute
+const RATE_LIMIT_WINDOW_MS = 60 * 1000; // 1 minute
+const RATE_LIMIT_MAX_REQUESTS = 10;
+
+interface RateLimitEntry {
+  count: number;
+  resetTime: number;
+}
+
+const rateLimitStore = new Map<string, RateLimitEntry>();
+
+function getClientIP(req: Request): string {
+  // Check common headers for client IP (in order of preference)
+  const forwardedFor = req.headers.get('x-forwarded-for');
+  if (forwardedFor) {
+    // x-forwarded-for can contain multiple IPs; take the first one (client)
+    return forwardedFor.split(',')[0].trim();
+  }
+  
+  const realIP = req.headers.get('x-real-ip');
+  if (realIP) {
+    return realIP.trim();
+  }
+  
+  const cfConnectingIP = req.headers.get('cf-connecting-ip');
+  if (cfConnectingIP) {
+    return cfConnectingIP.trim();
+  }
+  
+  // Fallback to a generic identifier if no IP found
+  return 'unknown';
+}
+
+function isRateLimited(clientIP: string): { limited: boolean; remaining: number; resetIn: number } {
+  const now = Date.now();
+  const entry = rateLimitStore.get(clientIP);
+  
+  // Clean up expired entries periodically (every 100 checks)
+  if (Math.random() < 0.01) {
+    for (const [ip, e] of rateLimitStore.entries()) {
+      if (now > e.resetTime) {
+        rateLimitStore.delete(ip);
+      }
+    }
+  }
+  
+  if (!entry || now > entry.resetTime) {
+    // No entry or expired - create new window
+    rateLimitStore.set(clientIP, {
+      count: 1,
+      resetTime: now + RATE_LIMIT_WINDOW_MS
+    });
+    return { limited: false, remaining: RATE_LIMIT_MAX_REQUESTS - 1, resetIn: RATE_LIMIT_WINDOW_MS };
+  }
+  
+  if (entry.count >= RATE_LIMIT_MAX_REQUESTS) {
+    // Rate limited
+    return { limited: true, remaining: 0, resetIn: entry.resetTime - now };
+  }
+  
+  // Increment counter
+  entry.count++;
+  return { limited: false, remaining: RATE_LIMIT_MAX_REQUESTS - entry.count, resetIn: entry.resetTime - now };
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
+  }
+
+  // Apply rate limiting
+  const clientIP = getClientIP(req);
+  const rateLimit = isRateLimited(clientIP);
+  
+  if (rateLimit.limited) {
+    console.log(`[fund-lookup] Rate limit exceeded for IP: ${clientIP.substring(0, 8)}...`);
+    return new Response(
+      JSON.stringify({ 
+        success: false, 
+        fundCode: '', 
+        error: 'Too many requests. Please try again later.' 
+      }),
+      { 
+        status: 429, 
+        headers: { 
+          ...corsHeaders, 
+          'Content-Type': 'application/json',
+          'Retry-After': Math.ceil(rateLimit.resetIn / 1000).toString(),
+          'X-RateLimit-Limit': RATE_LIMIT_MAX_REQUESTS.toString(),
+          'X-RateLimit-Remaining': '0',
+          'X-RateLimit-Reset': Math.ceil(rateLimit.resetIn / 1000).toString()
+        } 
+      }
+    );
   }
 
   try {
