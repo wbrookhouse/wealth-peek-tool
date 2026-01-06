@@ -157,11 +157,11 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Search for Canadian fund fact sheet
-    const searchQuery = `"${cleanedCode}" fund facts MER management expense ratio Canada`;
-    console.log(`[fund-lookup] Searching for fund: ${cleanedCode}`);
+    // Search for fund MER - prioritize Morningstar as primary source
+    const searchQuery = `site:morningstar.ca "${cleanedCode}" MER management expense ratio`;
+    console.log(`[fund-lookup] Searching Morningstar for fund: ${cleanedCode}`);
 
-    const searchResponse = await fetch('https://api.firecrawl.dev/v1/search', {
+    let searchResponse = await fetch('https://api.firecrawl.dev/v1/search', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${firecrawlApiKey}`,
@@ -176,7 +176,30 @@ Deno.serve(async (req) => {
       }),
     });
 
-    const searchData = await searchResponse.json();
+    let searchData = await searchResponse.json();
+
+    // If Morningstar search didn't find results, try broader search
+    if (!searchResponse.ok || !searchData.success || !searchData.data?.length) {
+      console.log(`[fund-lookup] Morningstar search empty for ${cleanedCode}, trying broader search...`);
+      
+      const broadSearchQuery = `"${cleanedCode}" fund facts MER management expense ratio Canada`;
+      searchResponse = await fetch('https://api.firecrawl.dev/v1/search', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${firecrawlApiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          query: broadSearchQuery,
+          limit: 5,
+          scrapeOptions: {
+            formats: ['markdown']
+          }
+        }),
+      });
+      
+      searchData = await searchResponse.json();
+    }
 
     if (!searchResponse.ok || !searchData.success) {
       console.error('[fund-lookup] Search failed for fund:', cleanedCode, 'status:', searchResponse.status);
