@@ -17,9 +17,9 @@ interface FundLookupResponse {
 }
 
 // Simple in-memory rate limiter
-// Limits: 10 requests per IP per minute
+// Limits: 100 requests per IP per minute (temporarily increased for testing)
 const RATE_LIMIT_WINDOW_MS = 60 * 1000; // 1 minute
-const RATE_LIMIT_MAX_REQUESTS = 10;
+const RATE_LIMIT_MAX_REQUESTS = 100;
 
 interface RateLimitEntry {
   count: number;
