@@ -1,41 +1,44 @@
 import { Header } from '@/components/Header';
 import { StepIndicator } from '@/components/StepIndicator';
+import { SignUpForm } from '@/components/SignUpForm';
 import { InvestmentForm } from '@/components/InvestmentForm';
-import { PricingCards } from '@/components/PricingCards';
 import { ServicesChecklist } from '@/components/ServicesChecklist';
 import { ComparisonReport } from '@/components/ComparisonReport';
 import { Button } from '@/components/ui/button';
 import { useCalculator } from '@/hooks/useCalculator';
 import { ArrowLeft, ArrowRight } from 'lucide-react';
 
-const STEP_LABELS = ['Your Investments', 'Choose Plan', 'Current Services', 'Comparison'];
+const STEP_LABELS = ['Your Investments', 'Current Services', 'Your Report'];
 
 const Index = () => {
   const {
+    userInfo,
     investments,
     services,
-    selectedTier,
+    meetingsPerYear,
     currentStep,
     totalInvested,
     totalFees,
     weightedMER,
-    selectedPricing,
-    savings,
+    signUp,
     addInvestment,
     removeInvestment,
     updateInvestmentMER,
     toggleService,
-    setSelectedTier,
+    setMeetingsPerYear,
     setCurrentStep
   } = useCalculator();
+
+  // Show sign-up form if user hasn't signed up
+  if (!userInfo) {
+    return <SignUpForm onSignUp={signUp} />;
+  }
 
   const canProceed = () => {
     switch (currentStep) {
       case 1:
         return investments.some(inv => inv.mer !== null);
       case 2:
-        return selectedTier !== null;
-      case 3:
         return true;
       default:
         return false;
@@ -43,7 +46,7 @@ const Index = () => {
   };
 
   const nextStep = () => {
-    if (currentStep < 4 && canProceed()) {
+    if (currentStep < 3 && canProceed()) {
       setCurrentStep(currentStep + 1);
     }
   };
@@ -61,7 +64,7 @@ const Index = () => {
       <main className="container py-6 md:py-10">
         <StepIndicator 
           currentStep={currentStep} 
-          totalSteps={4} 
+          totalSteps={3} 
           labels={STEP_LABELS} 
         />
 
@@ -79,28 +82,22 @@ const Index = () => {
           )}
 
           {currentStep === 2 && (
-            <PricingCards
-              selectedTier={selectedTier}
-              onSelectTier={setSelectedTier}
+            <ServicesChecklist
+              services={services}
+              onToggleService={toggleService}
+              meetingsPerYear={meetingsPerYear}
+              onMeetingsChange={setMeetingsPerYear}
             />
           )}
 
           {currentStep === 3 && (
-            <ServicesChecklist
-              services={services}
-              onToggleService={toggleService}
-            />
-          )}
-
-          {currentStep === 4 && (
             <ComparisonReport
               investments={investments}
               services={services}
-              selectedPricing={selectedPricing}
+              meetingsPerYear={meetingsPerYear}
               totalInvested={totalInvested}
               totalFees={totalFees}
               weightedMER={weightedMER}
-              savings={savings}
             />
           )}
 
@@ -116,7 +113,7 @@ const Index = () => {
               Back
             </Button>
             
-            {currentStep < 4 && (
+            {currentStep < 3 && (
               <Button
                 onClick={nextStep}
                 disabled={!canProceed()}
