@@ -2,8 +2,6 @@ import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Star, Play, ChevronDown, Menu, X, DollarSign, TrendingUp, Shield } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
-import { SplineScene } from '@/components/ui/splite';
 import { Spotlight } from '@/components/ui/spotlight';
 
 function Navbar() {
@@ -212,56 +210,69 @@ function HeroSection() {
   }, []);
 
   return (
-    <Card className="w-full min-h-[600px] md:min-h-[700px] bg-black/[0.96] relative overflow-hidden border-0 rounded-none">
+    <section className="relative min-h-screen flex items-center justify-center overflow-hidden bg-background">
+      {/* Animated background */}
+      <div className="absolute inset-0 galaxy-bg" />
+      <div className="absolute inset-0 star-bg opacity-60" />
+      
+      {/* Spotlight effect */}
       <Spotlight
         className="-top-40 left-0 md:left-60 md:-top-20"
         fill="hsl(145 80% 50%)"
       />
 
-      <div className="flex flex-col md:flex-row h-full min-h-[600px] md:min-h-[700px] pt-16">
-        {/* Left content */}
-        <div 
-          ref={heroContentRef}
-          className="flex-1 p-8 md:p-12 lg:p-16 relative z-10 flex flex-col justify-center"
-        >
-          <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold bg-clip-text text-transparent bg-gradient-to-b from-neutral-50 to-neutral-400">
-            Discover what you're{' '}
-            <span className="text-gradient-green">really paying</span>{' '}
-            in fees.
+      {/* Glowing orbs */}
+      <div className="absolute top-1/4 right-1/4 w-96 h-96 bg-primary/20 rounded-full blur-3xl animate-pulse" />
+      <div className="absolute bottom-1/4 left-1/4 w-64 h-64 bg-purple-500/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
+
+      {/* Hero content */}
+      <div 
+        ref={heroContentRef}
+        className="relative z-10 container mx-auto px-4 pt-24 pb-20 text-center"
+      >
+        <div className="max-w-4xl mx-auto space-y-8">
+          <h1 className="text-4xl md:text-5xl lg:text-7xl font-bold leading-tight">
+            <span className="bg-clip-text text-transparent bg-gradient-to-b from-foreground to-muted-foreground">
+              Discover what you're
+            </span>
+            <br />
+            <span className="text-gradient-green">really paying</span>
+            <br />
+            <span className="bg-clip-text text-transparent bg-gradient-to-b from-foreground to-muted-foreground">
+              in fees.
+            </span>
           </h1>
-          <p className="mt-6 text-neutral-300 max-w-lg text-lg">
+
+          <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto">
             Uncover hidden costs in your mutual funds and seg funds. 
             Our calculator reveals the true impact of management fees on your wealth.
           </p>
           
-          <div className="flex flex-col sm:flex-row gap-4 mt-8">
+          <div className="flex flex-col sm:flex-row gap-4 justify-center pt-4">
             <Button
               onClick={() => navigate('/calculator')}
               size="lg"
-              className="bg-gradient-green hover:opacity-90 text-primary-foreground font-semibold shadow-green px-8"
+              className="bg-gradient-green hover:opacity-90 text-primary-foreground font-semibold shadow-green px-8 py-6 text-lg"
             >
               Calculate My Fees
             </Button>
             <Button
               variant="outline"
               size="lg"
-              className="gap-2 border-neutral-700 hover:bg-neutral-800 text-neutral-200"
+              className="gap-2 border-border/50 hover:bg-secondary/50 px-8 py-6 text-lg"
             >
-              <Play className="w-4 h-4" />
+              <Play className="w-5 h-5" />
               Watch Demo
             </Button>
           </div>
         </div>
-
-        {/* Right content - 3D Scene */}
-        <div className="flex-1 relative min-h-[300px] md:min-h-0">
-          <SplineScene
-            scene="https://prod.spline.design/kZDDjO5HuC9GJUM2/scene.splinecode"
-            className="w-full h-full"
-          />
-        </div>
       </div>
-    </Card>
+
+      {/* Scroll indicator */}
+      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 animate-bounce">
+        <ChevronDown className="w-6 h-6 text-muted-foreground" />
+      </div>
+    </section>
   );
 }
 
