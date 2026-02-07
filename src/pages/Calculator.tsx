@@ -95,6 +95,7 @@ const Calculator = () => {
               totalInvested={totalInvested}
               totalFees={totalFees}
               weightedMER={weightedMER}
+              userInfo={userInfo}
             />
           )}
 
