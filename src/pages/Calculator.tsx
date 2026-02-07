@@ -11,6 +11,7 @@ const STEP_LABELS = ['Your Investments', 'Current Services', 'Your Report'];
 
 const Calculator = () => {
   const {
+    userInfo,
     investments,
     services,
     meetingsPerYear,
@@ -18,6 +19,7 @@ const Calculator = () => {
     totalInvested,
     totalFees,
     weightedMER,
+    setUser,
     addInvestment,
     removeInvestment,
     updateInvestmentMER,
@@ -29,7 +31,7 @@ const Calculator = () => {
   const canProceed = () => {
     switch (currentStep) {
       case 1:
-        return investments.some(inv => inv.mer !== null);
+        return investments.some(inv => inv.mer !== null) && userInfo !== null;
       case 2:
         return true;
       default:
@@ -64,9 +66,11 @@ const Calculator = () => {
           {currentStep === 1 && (
             <InvestmentForm
               investments={investments}
+              userInfo={userInfo}
               onAddInvestment={addInvestment}
               onRemoveInvestment={removeInvestment}
               onUpdateMER={updateInvestmentMER}
+              onSetUser={setUser}
               totalInvested={totalInvested}
               totalFees={totalFees}
               weightedMER={weightedMER}

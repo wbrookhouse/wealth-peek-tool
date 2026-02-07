@@ -1,8 +1,13 @@
+export type AccountType = 'TFSA' | 'RRSP' | 'LIRA' | 'RRIF' | 'RESP' | 'FHSA' | 'Open';
+
+export const ACCOUNT_TYPES: AccountType[] = ['TFSA', 'RRSP', 'LIRA', 'RRIF', 'RESP', 'FHSA', 'Open'];
+
 export interface Investment {
   id: string;
   fundCode: string;
   fundName: string;
   amount: number;
+  accountType: AccountType;
   mer: number | null;
   annualFee: number | null;
   isLoading: boolean;
@@ -17,6 +22,7 @@ export interface ServiceItem {
 
 export interface UserInfo {
   firstName: string;
+  email: string;
   hasIncorporatedBusiness: boolean;
 }
 

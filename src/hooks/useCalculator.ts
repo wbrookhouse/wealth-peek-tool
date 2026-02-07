@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { Investment, ServiceItem, UserInfo, DEFAULT_SERVICES } from '@/types/calculator';
+import { Investment, ServiceItem, UserInfo, DEFAULT_SERVICES, AccountType } from '@/types/calculator';
 import { lookupFundMER, calculateAnnualFee } from '@/lib/fundLookup';
 
 export function useCalculator() {
@@ -9,12 +9,11 @@ export function useCalculator() {
   const [meetingsPerYear, setMeetingsPerYear] = useState<number>(0);
   const [currentStep, setCurrentStep] = useState<number>(1);
 
-  const signUp = useCallback((info: UserInfo) => {
+  const setUser = useCallback((info: UserInfo) => {
     setUserInfo(info);
-    setCurrentStep(2);
   }, []);
 
-  const addInvestment = useCallback(async (fundCode: string, amount: number) => {
+  const addInvestment = useCallback(async (fundCode: string, amount: number, accountType: AccountType) => {
     const id = crypto.randomUUID();
     
     const newInvestment: Investment = {
@@ -22,6 +21,7 @@ export function useCalculator() {
       fundCode: fundCode.toUpperCase(),
       fundName: fundCode.toUpperCase(),
       amount,
+      accountType,
       mer: null,
       annualFee: null,
       isLoading: true,
@@ -89,7 +89,7 @@ export function useCalculator() {
     totalInvested,
     totalFees,
     weightedMER,
-    signUp,
+    setUser,
     addInvestment,
     removeInvestment,
     updateInvestmentMER,
