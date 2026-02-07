@@ -1,8 +1,11 @@
-import { Printer, Check, X, Star, Calendar } from 'lucide-react';
+import { useState } from 'react';
+import { Mail, Check, X, Star, Calendar, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
 import { Investment, ServiceItem, MEETING_FREQUENCY_OPTIONS } from '@/types/calculator';
 import { formatCurrency, formatPercent } from '@/lib/fundLookup';
+import { toast } from 'sonner';
 
 interface ComparisonReportProps {
   investments: Investment[];
@@ -21,39 +24,41 @@ export function ComparisonReport({
   totalFees,
   weightedMER
 }: ComparisonReportProps) {
-  const handlePrint = () => {
-    window.print();
-  };
+  const [email, setEmail] = useState('');
+  const [isSending, setIsSending] = useState(false);
+  const [emailSent, setEmailSent] = useState(false);
 
   const checkedServices = services.filter(s => s.checked);
   const uncheckedServices = services.filter(s => !s.checked);
   const meetingLabel = MEETING_FREQUENCY_OPTIONS.find(o => o.value === meetingsPerYear)?.label || 'Unknown';
+  const showCTA = totalFees > 3500;
+
+  const handleEmailReport = async () => {
+    if (!email.trim() || !email.includes('@')) {
+      toast.error('Please enter a valid email address');
+      return;
+    }
+
+    setIsSending(true);
+    
+    // Simulate sending email (in production, this would call an edge function)
+    await new Promise(resolve => setTimeout(resolve, 1500));
+    
+    setIsSending(false);
+    setEmailSent(true);
+    toast.success('Report sent to your email!');
+  };
 
   return (
-    <div className="space-y-8 print:space-y-6">
+    <div className="space-y-8">
       {/* Header */}
-      <div className="flex items-center justify-between print:hidden">
-        <div>
-          <h2 className="font-display text-2xl md:text-3xl font-bold">
-            Your <span className="text-gradient-green">Fee Report</span>
-          </h2>
-          <p className="text-muted-foreground">
-            Review your current fees and services
-          </p>
-        </div>
-        <Button onClick={handlePrint} variant="outline" className="gap-2">
-          <Printer className="w-4 h-4" />
-          Print Report
-        </Button>
-      </div>
-
-      {/* Print header */}
-      <div className="hidden print:flex items-center gap-3 pb-4 border-b border-border">
-        <Star className="h-8 w-8 text-primary fill-primary" />
-        <div>
-          <h1 className="font-display text-2xl font-bold">Black Star Wealth</h1>
-          <p className="text-sm text-muted-foreground">Fee Report</p>
-        </div>
+      <div className="text-center">
+        <h2 className="font-display text-2xl md:text-3xl font-bold">
+          Your <span className="text-gradient-green">Fee Report</span>
+        </h2>
+        <p className="text-muted-foreground">
+          Review your current fees and services
+        </p>
       </div>
 
       {/* Total Fees Highlight */}
@@ -75,8 +80,23 @@ export function ComparisonReport({
         </div>
       </Card>
 
+      {/* CTA - show if fees over $3,500 */}
+      {showCTA && (
+        <Card className="p-6 bg-gradient-to-br from-primary/20 to-primary/5 border-primary/40 text-center">
+          <p className="font-display text-xl md:text-2xl font-semibold mb-2">
+            There may be a better way.
+          </p>
+          <p className="text-muted-foreground mb-4">
+            Would you like to learn more?
+          </p>
+          <Button size="lg" className="bg-gradient-green hover:opacity-90 text-primary-foreground font-semibold shadow-green">
+            Schedule a Consultation
+          </Button>
+        </Card>
+      )}
+
       {/* Investment Summary */}
-      <Card className="p-6 bg-card/50 backdrop-blur border-border/50 print:bg-transparent print:border print:border-gray-300">
+      <Card className="p-6 bg-card/50 backdrop-blur border-border/50">
         <h3 className="font-display text-lg font-semibold mb-4">Your Investments</h3>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -116,7 +136,7 @@ export function ComparisonReport({
 
       {/* Services Received */}
       <div className="grid md:grid-cols-2 gap-6">
-        <Card className="p-6 bg-card/50 backdrop-blur border-border/50 print:bg-transparent print:border print:border-gray-300">
+        <Card className="p-6 bg-card/50 backdrop-blur border-border/50">
           <h3 className="font-display text-lg font-semibold mb-4 flex items-center gap-2">
             <Check className="w-5 h-5 text-green-500" />
             Services You Receive
@@ -142,7 +162,7 @@ export function ComparisonReport({
           </div>
         </Card>
 
-        <Card className="p-6 bg-card/50 backdrop-blur border-border/50 print:bg-transparent print:border print:border-gray-300">
+        <Card className="p-6 bg-card/50 backdrop-blur border-border/50">
           <h3 className="font-display text-lg font-semibold mb-4 flex items-center gap-2">
             <X className="w-5 h-5 text-destructive" />
             Services You're Not Receiving
@@ -178,20 +198,53 @@ export function ComparisonReport({
         </div>
       </Card>
 
-      {/* CTA - only show if fees over $5,000 */}
-      {totalFees > 5000 && (
-        <div className="text-center py-6 print:hidden">
-          <p className="font-display text-xl font-semibold mb-2">
-            There might be a better way.
-          </p>
-          <p className="text-muted-foreground mb-4">
-            Let's talk.
-          </p>
-          <Button size="lg" className="bg-gradient-green hover:opacity-90 text-primary-foreground font-semibold shadow-green">
-            Schedule a Consultation
-          </Button>
+      {/* Email Report Section */}
+      <Card className="p-6 bg-card/50 backdrop-blur border-primary/20 shadow-green">
+        <div className="flex items-center gap-3 mb-4">
+          <Mail className="w-6 h-6 text-primary" />
+          <h3 className="font-display text-lg font-semibold">Get Your Full Report</h3>
         </div>
-      )}
+        
+        {emailSent ? (
+          <div className="text-center py-4">
+            <Check className="w-12 h-12 text-green-500 mx-auto mb-2" />
+            <p className="text-lg font-medium">Report sent!</p>
+            <p className="text-sm text-muted-foreground">Check your inbox for the full report.</p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <p className="text-muted-foreground text-sm">
+              Enter your email to receive a detailed copy of this report{showCTA && ', including personalized recommendations'}.
+            </p>
+            <div className="flex gap-3">
+              <Input
+                type="email"
+                placeholder="you@example.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="bg-background/50 border-border/50 focus:border-primary flex-1"
+              />
+              <Button 
+                onClick={handleEmailReport}
+                disabled={isSending}
+                className="bg-gradient-green hover:opacity-90 text-primary-foreground font-semibold shadow-green gap-2"
+              >
+                {isSending ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Sending...
+                  </>
+                ) : (
+                  <>
+                    <Mail className="w-4 h-4" />
+                    Email Report
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        )}
+      </Card>
     </div>
   );
 }

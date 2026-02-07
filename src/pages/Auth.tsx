@@ -9,7 +9,6 @@ import { Checkbox } from '@/components/ui/checkbox';
 const Auth = () => {
   const navigate = useNavigate();
   const [firstName, setFirstName] = useState('');
-  const [email, setEmail] = useState('');
   const [hasIncorporatedBusiness, setHasIncorporatedBusiness] = useState(false);
   const [error, setError] = useState('');
 
@@ -22,15 +21,9 @@ const Auth = () => {
       return;
     }
     
-    if (!email.trim() || !email.includes('@')) {
-      setError('Please enter a valid email');
-      return;
-    }
-    
     // Store user info in sessionStorage for the calculator
     sessionStorage.setItem('userInfo', JSON.stringify({
       firstName: firstName.trim(),
-      email: email.trim(),
       hasIncorporatedBusiness
     }));
     
@@ -78,7 +71,7 @@ const Auth = () => {
         {/* Sign Up Form */}
         <Card className="p-6 md:p-8 bg-card/50 backdrop-blur border-primary/20 shadow-green">
           <h2 className="font-display text-xl font-semibold mb-6 text-center">
-            Get Access to the Fee Calculator
+            Let's Get Started
           </h2>
           
           <form onSubmit={handleSubmit} className="space-y-5">
@@ -91,20 +84,6 @@ const Auth = () => {
                 value={firstName}
                 onChange={(e) => setFirstName(e.target.value)}
                 placeholder="Enter your first name"
-                className="bg-background/50 border-border/50 focus:border-primary"
-              />
-            </div>
-            
-            <div>
-              <label htmlFor="email" className="text-sm font-medium text-muted-foreground mb-1.5 block">
-                Email Address
-              </label>
-              <Input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@example.com"
                 className="bg-background/50 border-border/50 focus:border-primary"
               />
             </div>

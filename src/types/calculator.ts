@@ -17,7 +17,6 @@ export interface ServiceItem {
 
 export interface UserInfo {
   firstName: string;
-  email: string;
   hasIncorporatedBusiness: boolean;
 }
 
