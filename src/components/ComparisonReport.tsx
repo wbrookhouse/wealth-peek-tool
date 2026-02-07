@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Investment, ServiceItem, MEETING_FREQUENCY_OPTIONS, UserInfo } from '@/types/calculator';
 import { formatCurrency, formatPercent } from '@/lib/fundLookup';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 
 interface ComparisonReportProps {
   investments: Investment[];
@@ -50,12 +51,49 @@ export function ComparisonReport({
 
     setIsSending(true);
     
-    // Simulate sending email (in production, this would call an edge function)
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    
-    setIsSending(false);
-    setEmailSent(true);
-    toast.success('Report sent to your email!');
+    try {
+      const { data, error } = await supabase.functions.invoke('send-report-email', {
+        body: {
+          email: email.trim(),
+          firstName: userInfo?.firstName || null,
+          investments: investments.filter(inv => inv.mer !== null).map(inv => ({
+            fundCode: inv.fundCode,
+            fundName: inv.fundName,
+            amount: inv.amount,
+            mer: inv.mer,
+            annualFee: inv.annualFee,
+            accountType: inv.accountType,
+          })),
+          services: services.map(s => ({
+            id: s.id,
+            name: s.name,
+            checked: s.checked,
+          })),
+          meetingsPerYear,
+          meetingLabel,
+          totalInvested,
+          totalFees,
+          weightedMER,
+        },
+      });
+
+      if (error) {
+        console.error('Email send error:', error);
+        throw new Error(error.message || 'Failed to send email');
+      }
+
+      if (data?.success === false) {
+        throw new Error(data.error || 'Failed to send email');
+      }
+
+      setEmailSent(true);
+      toast.success('Report sent to your email!');
+    } catch (error: any) {
+      console.error('Email error:', error);
+      toast.error(error.message || 'Failed to send report. Please try again.');
+    } finally {
+      setIsSending(false);
+    }
   };
 
   return (
