@@ -1,62 +1,144 @@
-import { useEffect, useRef, useState } from 'react';
+import { ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Star, Play, ChevronDown, Menu, X, DollarSign, TrendingUp, Shield } from 'lucide-react';
+import { Star, ChevronDown, Menu, X, DollarSign, TrendingUp, Shield } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Spotlight } from '@/components/ui/spotlight';
+import { cn } from '@/lib/utils';
+
+interface Avatar {
+  id: number;
+  src: string;
+  alt: string;
+}
+
+const AVATARS: Avatar[] = [
+  { id: 1, src: "https://i.pravatar.cc/40?img=12", alt: "Customer avatar 1" },
+  { id: 2, src: "https://i.pravatar.cc/40?img=32", alt: "Customer avatar 2" },
+  { id: 3, src: "https://i.pravatar.cc/40?img=45", alt: "Customer avatar 3" },
+  { id: 4, src: "https://i.pravatar.cc/40?img=56", alt: "Customer avatar 4" },
+];
+
+interface HeroGridProps {
+  avatars?: Avatar[];
+  title?: ReactNode;
+  subtitle?: ReactNode;
+  primaryCtaText?: string;
+  secondaryCtaText?: string;
+  onPrimaryCtaClick?: () => void;
+  onSecondaryCtaClick?: () => void;
+  className?: string;
+}
+
+function HeroGrid({
+  avatars = AVATARS,
+  title = (
+    <>
+      Discover what you're{' '}
+      <span className="text-gradient-green">really paying</span>{' '}
+      in fees.
+    </>
+  ),
+  subtitle = "Uncover hidden costs in your mutual funds and seg funds. Our calculator reveals the true impact of management fees on your wealth.",
+  primaryCtaText = "Calculate My Fees",
+  secondaryCtaText = "Learn More",
+  onPrimaryCtaClick,
+  onSecondaryCtaClick,
+  className,
+}: HeroGridProps) {
+  return (
+    <section className={cn("relative min-h-screen overflow-hidden bg-background", className)}>
+      {/* Grid background pattern */}
+      <div className="absolute inset-0 bg-[linear-gradient(to_right,hsl(var(--border)/0.3)_1px,transparent_1px),linear-gradient(to_bottom,hsl(var(--border)/0.3)_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_110%)]" />
+      
+      {/* Galaxy gradient overlay */}
+      <div className="absolute inset-0 galaxy-bg opacity-80" />
+      
+      {/* Decorative glows */}
+      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[600px] h-[600px] bg-primary/10 rounded-full blur-3xl" />
+      <div className="absolute bottom-0 left-1/4 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl" />
+
+      <div className="relative z-10 container mx-auto px-4 pt-32 pb-20">
+        <div className="flex flex-col items-center text-center space-y-8">
+          {/* Avatars with social proof */}
+          <div className="flex flex-col items-center gap-3">
+            <div className="flex -space-x-3">
+              {avatars.map((avatar) => (
+                <img
+                  key={avatar.id}
+                  src={avatar.src}
+                  alt={avatar.alt}
+                  className="w-10 h-10 rounded-full border-2 border-background object-cover"
+                />
+              ))}
+            </div>
+            <p className="text-sm text-muted-foreground">
+              Trusted by <span className="text-foreground font-medium">2,000+</span> Canadians
+            </p>
+          </div>
+
+          {/* Title */}
+          <h1 className="font-display text-4xl md:text-5xl lg:text-6xl font-bold max-w-4xl leading-tight">
+            {title}
+          </h1>
+
+          {/* Subtitle */}
+          <p className="text-lg md:text-xl text-muted-foreground max-w-2xl">
+            {subtitle}
+          </p>
+
+          {/* CTA Buttons */}
+          <div className="flex flex-col sm:flex-row gap-4 pt-4">
+            <Button
+              onClick={onPrimaryCtaClick}
+              size="lg"
+              className="bg-gradient-green hover:opacity-90 text-primary-foreground font-semibold shadow-green px-8 py-6 text-lg"
+            >
+              {primaryCtaText}
+            </Button>
+            <Button
+              onClick={onSecondaryCtaClick}
+              variant="outline"
+              size="lg"
+              className="border-border/50 hover:bg-secondary/50 px-8 py-6 text-lg"
+            >
+              {secondaryCtaText}
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      {/* Bottom scroll indicator */}
+      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 animate-bounce">
+        <ChevronDown className="w-6 h-6 text-muted-foreground" />
+      </div>
+    </section>
+  );
+}
 
 function Navbar() {
   const navigate = useNavigate();
-  const [hoveredNavItem, setHoveredNavItem] = useState<string | null>(null);
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [mobileDropdowns, setMobileDropdowns] = useState({
-    services: false,
-    resources: false,
-  });
+  const [hoveredNavItem, setHoveredNavItem] = React.useState<string | null>(null);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
 
   const handleMouseEnterNavItem = (item: string) => setHoveredNavItem(item);
   const handleMouseLeaveNavItem = () => setHoveredNavItem(null);
 
-  const toggleMobileMenu = () => {
-    setIsMobileMenuOpen(!isMobileMenuOpen);
-    if (isMobileMenuOpen) {
-      setMobileDropdowns({ services: false, resources: false });
-    }
-  };
-
-  const toggleMobileDropdown = (key: keyof typeof mobileDropdowns) => {
-    setMobileDropdowns(prev => ({ ...prev, [key]: !prev[key] }));
-  };
+  const toggleMobileMenu = () => setIsMobileMenuOpen(!isMobileMenuOpen);
 
   const navLinkClass = (itemName: string) => {
     const isCurrentItemHovered = hoveredNavItem === itemName;
     const isAnotherItemHovered = hoveredNavItem !== null && !isCurrentItemHovered;
-
     const colorClass = isCurrentItemHovered
       ? 'text-primary'
       : isAnotherItemHovered
         ? 'text-muted-foreground'
         : 'text-foreground';
-
     return `text-sm font-medium transition duration-150 ${colorClass}`;
   };
-
-  useEffect(() => {
-    const handleResize = () => {
-      if (window.innerWidth >= 1024 && isMobileMenuOpen) {
-        setIsMobileMenuOpen(false);
-        setMobileDropdowns({ services: false, resources: false });
-      }
-    };
-
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, [isMobileMenuOpen]);
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-xl border-b border-border/30">
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16">
-          {/* Logo */}
           <div className="flex items-center gap-2">
             <Star className="h-7 w-7 text-primary fill-primary" />
             <span className="font-display text-lg font-bold tracking-tight">
@@ -64,7 +146,6 @@ function Navbar() {
             </span>
           </div>
 
-          {/* Desktop Navigation */}
           <div className="hidden lg:flex items-center gap-8">
             <div 
               className="relative group"
@@ -111,11 +192,8 @@ function Navbar() {
             </button>
           </div>
 
-          {/* Desktop CTA */}
           <div className="hidden lg:flex items-center gap-4">
-            <Button variant="ghost" className="text-sm">
-              Contact
-            </Button>
+            <Button variant="ghost" className="text-sm">Contact</Button>
             <Button
               onClick={() => navigate('/calculator')}
               className="bg-gradient-green hover:opacity-90 text-primary-foreground font-semibold shadow-green"
@@ -124,54 +202,18 @@ function Navbar() {
             </Button>
           </div>
 
-          {/* Mobile Menu Button */}
-          <button
-            className="lg:hidden p-2 text-foreground"
-            onClick={toggleMobileMenu}
-          >
+          <button className="lg:hidden p-2 text-foreground" onClick={toggleMobileMenu}>
             {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
           </button>
         </div>
       </div>
 
-      {/* Mobile Menu */}
       <div className={`lg:hidden overflow-hidden transition-all duration-300 ${isMobileMenuOpen ? 'max-h-screen' : 'max-h-0'}`}>
         <div className="bg-card/95 backdrop-blur-xl border-t border-border/30 px-4 py-4 space-y-2">
-          <div>
-            <button
-              className="w-full flex items-center justify-between py-2 text-foreground"
-              onClick={() => toggleMobileDropdown('services')}
-              aria-expanded={mobileDropdowns.services}
-            >
-              Services
-              <ChevronDown className={`w-4 h-4 transition-transform ${mobileDropdowns.services ? 'rotate-180' : ''}`} />
-            </button>
-            <div className={`overflow-hidden transition-all duration-200 ${mobileDropdowns.services ? 'max-h-40' : 'max-h-0'}`}>
-              <a href="#" className="block py-2 pl-4 text-sm text-muted-foreground">Fee Analysis</a>
-              <a href="#" className="block py-2 pl-4 text-sm text-muted-foreground">Portfolio Review</a>
-              <a href="#" className="block py-2 pl-4 text-sm text-muted-foreground">Wealth Planning</a>
-            </div>
-          </div>
-
-          <div>
-            <button
-              className="w-full flex items-center justify-between py-2 text-foreground"
-              onClick={() => toggleMobileDropdown('resources')}
-              aria-expanded={mobileDropdowns.resources}
-            >
-              Resources
-              <ChevronDown className={`w-4 h-4 transition-transform ${mobileDropdowns.resources ? 'rotate-180' : ''}`} />
-            </button>
-            <div className={`overflow-hidden transition-all duration-200 ${mobileDropdowns.resources ? 'max-h-40' : 'max-h-0'}`}>
-              <a href="#" className="block py-2 pl-4 text-sm text-muted-foreground">Blog</a>
-              <a href="#" className="block py-2 pl-4 text-sm text-muted-foreground">Guides</a>
-              <a href="#" className="block py-2 pl-4 text-sm text-muted-foreground">FAQ</a>
-            </div>
-          </div>
-
+          <a href="#" className="block py-2 text-foreground">Services</a>
+          <a href="#" className="block py-2 text-foreground">Resources</a>
           <a href="#" className="block py-2 text-foreground">About</a>
           <a href="#" className="block py-2 text-foreground">Contact</a>
-
           <Button
             onClick={() => navigate('/calculator')}
             className="w-full mt-4 bg-gradient-green hover:opacity-90 text-primary-foreground font-semibold shadow-green"
@@ -181,98 +223,6 @@ function Navbar() {
         </div>
       </div>
     </nav>
-  );
-}
-
-function HeroSection() {
-  const navigate = useNavigate();
-  const heroContentRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const handleScroll = () => {
-      if (heroContentRef.current) {
-        requestAnimationFrame(() => {
-          const scrollPosition = window.pageYOffset;
-          const maxScroll = 400;
-          const opacity = 1 - Math.min(scrollPosition / maxScroll, 1);
-          const translateY = scrollPosition * 0.3;
-
-          if (heroContentRef.current) {
-            heroContentRef.current.style.opacity = opacity.toString();
-            heroContentRef.current.style.transform = `translateY(${translateY}px)`;
-          }
-        });
-      }
-    };
-
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
-
-  return (
-    <section className="relative min-h-screen flex items-center justify-center overflow-hidden bg-background">
-      {/* Animated background */}
-      <div className="absolute inset-0 galaxy-bg" />
-      <div className="absolute inset-0 star-bg opacity-60" />
-      
-      {/* Spotlight effect */}
-      <Spotlight
-        className="-top-40 left-0 md:left-60 md:-top-20"
-        fill="hsl(145 80% 50%)"
-      />
-
-      {/* Glowing orbs */}
-      <div className="absolute top-1/4 right-1/4 w-96 h-96 bg-primary/20 rounded-full blur-3xl animate-pulse" />
-      <div className="absolute bottom-1/4 left-1/4 w-64 h-64 bg-purple-500/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
-
-      {/* Hero content */}
-      <div 
-        ref={heroContentRef}
-        className="relative z-10 container mx-auto px-4 pt-24 pb-20 text-center"
-      >
-        <div className="max-w-4xl mx-auto space-y-8">
-          <h1 className="text-4xl md:text-5xl lg:text-7xl font-bold leading-tight">
-            <span className="bg-clip-text text-transparent bg-gradient-to-b from-foreground to-muted-foreground">
-              Discover what you're
-            </span>
-            <br />
-            <span className="text-gradient-green">really paying</span>
-            <br />
-            <span className="bg-clip-text text-transparent bg-gradient-to-b from-foreground to-muted-foreground">
-              in fees.
-            </span>
-          </h1>
-
-          <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto">
-            Uncover hidden costs in your mutual funds and seg funds. 
-            Our calculator reveals the true impact of management fees on your wealth.
-          </p>
-          
-          <div className="flex flex-col sm:flex-row gap-4 justify-center pt-4">
-            <Button
-              onClick={() => navigate('/calculator')}
-              size="lg"
-              className="bg-gradient-green hover:opacity-90 text-primary-foreground font-semibold shadow-green px-8 py-6 text-lg"
-            >
-              Calculate My Fees
-            </Button>
-            <Button
-              variant="outline"
-              size="lg"
-              className="gap-2 border-border/50 hover:bg-secondary/50 px-8 py-6 text-lg"
-            >
-              <Play className="w-5 h-5" />
-              Watch Demo
-            </Button>
-          </div>
-        </div>
-      </div>
-
-      {/* Scroll indicator */}
-      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 animate-bounce">
-        <ChevronDown className="w-6 h-6 text-muted-foreground" />
-      </div>
-    </section>
   );
 }
 
@@ -316,6 +266,8 @@ function FeatureCards() {
   );
 }
 
+import React from 'react';
+
 export default function Landing() {
   const navigate = useNavigate();
 
@@ -324,8 +276,17 @@ export default function Landing() {
       <Navbar />
       
       <main>
-        <HeroSection />
-        <FeatureCards />
+        <HeroGrid 
+          onPrimaryCtaClick={() => navigate('/calculator')}
+          onSecondaryCtaClick={() => {
+            const featuresSection = document.querySelector('#features');
+            featuresSection?.scrollIntoView({ behavior: 'smooth' });
+          }}
+        />
+        
+        <div id="features">
+          <FeatureCards />
+        </div>
         
         {/* CTA Section */}
         <section className="relative z-10 py-20 galaxy-bg">
