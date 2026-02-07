@@ -286,6 +286,134 @@ async function lookupWithEODHD(fundCode: string, apiKey: string): Promise<FundLo
   return null;
 }
 
+// Fallback: Search for Canadian mutual fund MER data using Firecrawl
+async function lookupWithFirecrawl(fundCode: string): Promise<FundLookupResponse | null> {
+  const firecrawlApiKey = Deno.env.get('FIRECRAWL_API_KEY');
+  if (!firecrawlApiKey) {
+    console.log('[fund-lookup] FIRECRAWL_API_KEY not configured, skipping Firecrawl fallback');
+    return null;
+  }
+
+  console.log(`[fund-lookup] Searching for fund with Firecrawl: ${fundCode}`);
+  
+  // MER extraction patterns - common ways MER is displayed
+  const merPatterns = [
+    /MER[:\s]+(\d+\.?\d*)%/i,
+    /Management\s+Expense\s+Ratio[:\s]+(\d+\.?\d*)%/i,
+    /Expense\s+Ratio[:\s]+(\d+\.?\d*)%/i,
+    /Net\s+Expense[:\s]+(\d+\.?\d*)%/i,
+    /Management\s+fee[:\s]+(\d+\.?\d*)%/i,
+    /Total\s+Expense[:\s]+(\d+\.?\d*)%/i,
+    /\|\s*MER\s*\|\s*(\d+\.?\d*)%/i  // Table format
+  ];
+
+  // Helper function to extract MER from markdown content
+  function extractMER(markdown: string): number | null {
+    for (const pattern of merPatterns) {
+      const match = markdown.match(pattern);
+      if (match && match[1]) {
+        const mer = parseFloat(match[1]);
+        // Validate MER is in reasonable range (0.01% to 10%)
+        if (mer >= 0.01 && mer <= 10) {
+          return Math.round(mer * 100) / 100;
+        }
+      }
+    }
+    return null;
+  }
+
+  try {
+    // Strategy 1: Search for fund fact sheet with MER
+    const searchQueries = [
+      `"${fundCode}" MER fund fact sheet Canada`,
+      `"${fundCode}" management expense ratio mutual fund`,
+      `site:morningstar.ca "${fundCode}"`,
+      `site:globeandmail.com "${fundCode}" fund`
+    ];
+
+    for (const query of searchQueries) {
+      console.log(`[fund-lookup] Firecrawl search: ${query}`);
+      
+      const searchResponse = await fetch('https://api.firecrawl.dev/v1/search', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${firecrawlApiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          query: query,
+          limit: 5,
+          lang: 'en',
+          scrapeOptions: {
+            formats: ['markdown']
+          }
+        }),
+      });
+
+      if (!searchResponse.ok) {
+        console.log(`[fund-lookup] Firecrawl search failed: ${searchResponse.status}`);
+        continue;
+      }
+
+      const searchData = await searchResponse.json();
+      
+      if (!searchData.success || !searchData.data || searchData.data.length === 0) {
+        console.log(`[fund-lookup] No results for query: ${query}`);
+        continue;
+      }
+
+      // Parse search results for MER data
+      for (const result of searchData.data) {
+        const markdown = result.markdown || '';
+        const title = result.title || '';
+        const url = result.url || '';
+        
+        console.log(`[fund-lookup] Checking result: ${title} (${url})`);
+        
+        const mer = extractMER(markdown);
+        
+        if (mer !== null) {
+          console.log(`[fund-lookup] Found MER ${mer}% from ${url}`);
+          
+          // Extract fund name from title
+          let fundName = title
+            .replace(/\s*-\s*(Morningstar|Globe|Fund Facts).*$/i, '')
+            .replace(/\s*\(.*\)$/, '')
+            .trim();
+          
+          if (!fundName || fundName.length < 3) {
+            fundName = `Fund ${fundCode}`;
+          }
+          
+          // Determine source from URL
+          let source = 'Fund Data Search';
+          if (url.includes('morningstar')) {
+            source = 'Morningstar Canada';
+          } else if (url.includes('globeandmail')) {
+            source = 'Globe and Mail';
+          } else if (url.includes('cifinancial') || url.includes('ci.com')) {
+            source = 'CI Financial';
+          }
+          
+          return {
+            success: true,
+            fundCode: fundCode,
+            fundName: fundName,
+            mer: mer,
+            source: source
+          };
+        }
+      }
+    }
+
+    console.log(`[fund-lookup] Could not find MER via Firecrawl for ${fundCode}`);
+    return null;
+  } catch (error) {
+    console.error(`[fund-lookup] Firecrawl lookup error:`, error);
+    return null;
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -350,12 +478,25 @@ Deno.serve(async (req) => {
       );
     }
 
-    const result = await lookupWithEODHD(cleanedCode, eodhdApiKey);
+    // Step 1: Try EODHD API
+    const eodhResult = await lookupWithEODHD(cleanedCode, eodhdApiKey);
     
-    if (result) {
-      console.log(`[fund-lookup] Success: ${cleanedCode} -> ${result.fundName} (MER: ${result.mer}%)`);
+    if (eodhResult) {
+      console.log(`[fund-lookup] EODHD Success: ${cleanedCode} -> ${eodhResult.fundName} (MER: ${eodhResult.mer}%)`);
       return new Response(
-        JSON.stringify(result),
+        JSON.stringify(eodhResult),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Step 2: Fallback to Firecrawl search for Canadian mutual funds
+    console.log(`[fund-lookup] EODHD failed, trying Firecrawl fallback for: ${cleanedCode}`);
+    const firecrawlResult = await lookupWithFirecrawl(cleanedCode);
+    
+    if (firecrawlResult) {
+      console.log(`[fund-lookup] Firecrawl Success: ${cleanedCode} -> ${firecrawlResult.fundName} (MER: ${firecrawlResult.mer}%)`);
+      return new Response(
+        JSON.stringify(firecrawlResult),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
