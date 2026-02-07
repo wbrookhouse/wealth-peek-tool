@@ -14,7 +14,113 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      profiles: {
+        Row: {
+          created_at: string
+          email: string
+          first_name: string
+          has_incorporated_business: boolean | null
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          first_name: string
+          has_incorporated_business?: boolean | null
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          first_name?: string
+          has_incorporated_business?: boolean | null
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      saved_investments: {
+        Row: {
+          account_type: string
+          amount: number
+          annual_fee: number | null
+          created_at: string
+          fund_code: string
+          fund_name: string
+          id: string
+          mer: number | null
+          portfolio_id: string
+        }
+        Insert: {
+          account_type: string
+          amount: number
+          annual_fee?: number | null
+          created_at?: string
+          fund_code: string
+          fund_name: string
+          id?: string
+          mer?: number | null
+          portfolio_id: string
+        }
+        Update: {
+          account_type?: string
+          amount?: number
+          annual_fee?: number | null
+          created_at?: string
+          fund_code?: string
+          fund_name?: string
+          id?: string
+          mer?: number | null
+          portfolio_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "saved_investments_portfolio_id_fkey"
+            columns: ["portfolio_id"]
+            isOneToOne: false
+            referencedRelation: "saved_portfolios"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      saved_portfolios: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          total_fees: number
+          total_invested: number
+          updated_at: string
+          user_id: string
+          weighted_mer: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name?: string
+          total_fees?: number
+          total_invested?: number
+          updated_at?: string
+          user_id: string
+          weighted_mer?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          total_fees?: number
+          total_invested?: number
+          updated_at?: string
+          user_id?: string
+          weighted_mer?: number
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

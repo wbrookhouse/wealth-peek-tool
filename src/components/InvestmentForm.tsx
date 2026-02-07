@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, Loader2, X, AlertCircle, Edit2, Check } from 'lucide-react';
+import { Plus, Loader2, X, AlertCircle, Edit2, Check, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
@@ -8,6 +8,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Investment, AccountType, ACCOUNT_TYPES, UserInfo } from '@/types/calculator';
 import { formatCurrency, formatPercent } from '@/lib/fundLookup';
 import { cn } from '@/lib/utils';
+import { supabase } from '@/integrations/supabase/client';
+
+interface FundSearchResult {
+  fundCode: string;
+  fundName: string;
+  source: string;
+}
 
 interface InvestmentFormProps {
   investments: Investment[];
@@ -44,6 +51,43 @@ export function InvestmentForm({
   const [firstName, setFirstName] = useState('');
   const [email, setEmail] = useState('');
   const [userError, setUserError] = useState('');
+
+  // Fund search state
+  const [showSearchModal, setShowSearchModal] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<FundSearchResult[]>([]);
+  const [searching, setSearching] = useState(false);
+
+  const handleFundSearch = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!searchQuery.trim() || searchQuery.length < 2) return;
+    
+    setSearching(true);
+    setSearchResults([]);
+    
+    try {
+      const { data, error } = await supabase.functions.invoke('fund-search', {
+        body: { query: searchQuery }
+      });
+      
+      if (error) throw error;
+      
+      if (data.success && data.results) {
+        setSearchResults(data.results);
+      }
+    } catch (err) {
+      console.error('Fund search error:', err);
+    } finally {
+      setSearching(false);
+    }
+  };
+
+  const selectFundFromSearch = (code: string) => {
+    setFundCode(code);
+    setShowSearchModal(false);
+    setSearchQuery('');
+    setSearchResults([]);
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -136,14 +180,26 @@ export function InvestmentForm({
               <label htmlFor="fundCode" className="text-sm font-medium text-muted-foreground mb-1.5 block">
                 Fund Code
               </label>
-              <Input
-                id="fundCode"
-                value={fundCode}
-                onChange={(e) => setFundCode(e.target.value.toUpperCase())}
-                placeholder="e.g., RBF1018"
-                className="bg-background/50 border-border/50 focus:border-primary uppercase"
-                disabled={isLoading}
-              />
+              <div className="flex gap-2">
+                <Input
+                  id="fundCode"
+                  value={fundCode}
+                  onChange={(e) => setFundCode(e.target.value.toUpperCase())}
+                  placeholder="e.g., RBF1018"
+                  className="bg-background/50 border-border/50 focus:border-primary uppercase flex-1"
+                  disabled={isLoading}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  onClick={() => setShowSearchModal(true)}
+                  className="shrink-0"
+                  title="Search by fund name"
+                >
+                  <Search className="w-4 h-4" />
+                </Button>
+              </div>
             </div>
             <div>
               <label htmlFor="amount" className="text-sm font-medium text-muted-foreground mb-1.5 block">
@@ -373,6 +429,63 @@ export function InvestmentForm({
             >
               Continue to Results
             </Button>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Fund Search Modal */}
+      <Dialog open={showSearchModal} onOpenChange={setShowSearchModal}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Find Fund Code</DialogTitle>
+            <DialogDescription>
+              Enter the fund name to search for its code.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleFundSearch} className="space-y-4 pt-4">
+            <div className="flex gap-2">
+              <Input
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Enter fund name (e.g., 'RBC Canadian Dividend')"
+                className="flex-1 bg-background/50 border-border/50"
+                disabled={searching}
+              />
+              <Button 
+                type="submit" 
+                disabled={searching || searchQuery.length < 2}
+              >
+                {searching ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+              </Button>
+            </div>
+            
+            {searchResults.length > 0 && (
+              <div className="space-y-2 max-h-60 overflow-y-auto">
+                <p className="text-sm font-medium">Found {searchResults.length} result(s):</p>
+                {searchResults.map((result, index) => (
+                  <div 
+                    key={index}
+                    className="flex items-center justify-between p-3 rounded-lg bg-secondary/30 hover:bg-secondary/50 transition-colors cursor-pointer"
+                    onClick={() => selectFundFromSearch(result.fundCode)}
+                  >
+                    <div className="min-w-0 flex-1">
+                      <p className="font-mono font-semibold text-primary">{result.fundCode}</p>
+                      <p className="text-sm text-muted-foreground truncate">{result.fundName}</p>
+                    </div>
+                    <Button size="sm" variant="ghost">
+                      Select
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+            
+            {searching && (
+              <div className="text-center py-4">
+                <Loader2 className="w-6 h-6 animate-spin mx-auto text-primary" />
+                <p className="text-sm text-muted-foreground mt-2">Searching...</p>
+              </div>
+            )}
           </form>
         </DialogContent>
       </Dialog>
