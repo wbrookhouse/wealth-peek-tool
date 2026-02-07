@@ -17,8 +17,7 @@ interface FundLookupResponse {
 }
 
 // Simple in-memory rate limiter
-// Limits: 100 requests per IP per minute (temporarily increased for testing)
-const RATE_LIMIT_WINDOW_MS = 60 * 1000; // 1 minute
+const RATE_LIMIT_WINDOW_MS = 60 * 1000;
 const RATE_LIMIT_MAX_REQUESTS = 100;
 
 interface RateLimitEntry {
@@ -29,10 +28,8 @@ interface RateLimitEntry {
 const rateLimitStore = new Map<string, RateLimitEntry>();
 
 function getClientIP(req: Request): string {
-  // Check common headers for client IP (in order of preference)
   const forwardedFor = req.headers.get('x-forwarded-for');
   if (forwardedFor) {
-    // x-forwarded-for can contain multiple IPs; take the first one (client)
     return forwardedFor.split(',')[0].trim();
   }
   
@@ -46,7 +43,6 @@ function getClientIP(req: Request): string {
     return cfConnectingIP.trim();
   }
   
-  // Fallback to a generic identifier if no IP found
   return 'unknown';
 }
 
@@ -54,7 +50,6 @@ function isRateLimited(clientIP: string): { limited: boolean; remaining: number;
   const now = Date.now();
   const entry = rateLimitStore.get(clientIP);
   
-  // Clean up expired entries periodically (every 100 checks)
   if (Math.random() < 0.01) {
     for (const [ip, e] of rateLimitStore.entries()) {
       if (now > e.resetTime) {
@@ -64,7 +59,6 @@ function isRateLimited(clientIP: string): { limited: boolean; remaining: number;
   }
   
   if (!entry || now > entry.resetTime) {
-    // No entry or expired - create new window
     rateLimitStore.set(clientIP, {
       count: 1,
       resetTime: now + RATE_LIMIT_WINDOW_MS
@@ -73,13 +67,223 @@ function isRateLimited(clientIP: string): { limited: boolean; remaining: number;
   }
   
   if (entry.count >= RATE_LIMIT_MAX_REQUESTS) {
-    // Rate limited
     return { limited: true, remaining: 0, resetIn: entry.resetTime - now };
   }
   
-  // Increment counter
   entry.count++;
   return { limited: false, remaining: RATE_LIMIT_MAX_REQUESTS - entry.count, resetIn: entry.resetTime - now };
+}
+
+// Exchange suffixes to try for direct lookup
+// Exchange suffixes to try - .CF for Canadian mutual funds, .TO for Toronto stocks/ETFs
+const EXCHANGE_SUFFIXES = ['', '.US', '.TO', '.CF', '.CA', '.V', '.CN', '.NEO'];
+
+interface SearchResult {
+  Code: string;
+  Exchange: string;
+  Name: string;
+  Type: string;
+  Country?: string;
+  Currency?: string;
+  ISIN?: string;
+}
+
+interface EODHDFundamentals {
+  General?: {
+    Code?: string;
+    Name?: string;
+    Type?: string;
+  };
+  ETF_Data?: {
+    NetExpenseRatio?: number;
+    Ongoing_Charge?: number;
+    Max_Annual_Mgmt_Charge?: number;
+  };
+  MutualFund?: {
+    Fund_NetExpenseRatio?: number;
+    Fund_MaxRedemptionFee?: number;
+    Net_Expense_Ratio?: number;
+    Expense_Ratio?: number;
+  };
+}
+
+// Use EODHD Search API to find the correct ticker
+async function searchForTicker(fundCode: string, apiKey: string): Promise<string[]> {
+  const url = `https://eodhd.com/api/search/${encodeURIComponent(fundCode)}?api_token=${apiKey}&fmt=json&limit=10`;
+  
+  console.log(`[fund-lookup] Searching for ticker: ${fundCode}`);
+  
+  try {
+    const response = await fetch(url);
+    
+    if (!response.ok) {
+      console.log(`[fund-lookup] Search returned ${response.status}`);
+      return [];
+    }
+    
+    const results: SearchResult[] = await response.json();
+    
+    if (!Array.isArray(results) || results.length === 0) {
+      console.log(`[fund-lookup] No search results found`);
+      return [];
+    }
+    
+    // Filter for funds, ETFs, and stocks that match - prioritize Canadian exchanges
+    const tickers: string[] = [];
+    
+    // First add exact code matches
+    for (const result of results) {
+      if (result.Code && result.Exchange) {
+        const fullTicker = `${result.Code}.${result.Exchange}`;
+        // Check if the code contains the search term
+        if (result.Code.includes(fundCode) || (result.Name && result.Name.toLowerCase().includes(fundCode.toLowerCase()))) {
+          tickers.push(fullTicker);
+          console.log(`[fund-lookup] Found potential match: ${fullTicker} - ${result.Name} (${result.Type})`);
+        }
+      }
+    }
+    
+    // If no exact matches, add all results
+    if (tickers.length === 0) {
+      for (const result of results) {
+        if (result.Code && result.Exchange) {
+          const fullTicker = `${result.Code}.${result.Exchange}`;
+          tickers.push(fullTicker);
+          console.log(`[fund-lookup] Adding search result: ${fullTicker} - ${result.Name}`);
+        }
+      }
+    }
+    
+    // Prioritize Canadian tickers (.TO, .V)
+    tickers.sort((a, b) => {
+      const aIsCan = a.endsWith('.TO') || a.endsWith('.V') || a.endsWith('.CA');
+      const bIsCan = b.endsWith('.TO') || b.endsWith('.V') || b.endsWith('.CA');
+      if (aIsCan && !bIsCan) return -1;
+      if (!aIsCan && bIsCan) return 1;
+      return 0;
+    });
+    
+    return tickers.slice(0, 5); // Return top 5 matches
+  } catch (error) {
+    console.error(`[fund-lookup] Search error:`, error);
+    return [];
+  }
+}
+
+// Get MER from fundamentals data
+function extractMER(data: EODHDFundamentals): { mer: number; source: string } | null {
+  // For ETFs
+  if (data.ETF_Data) {
+    if (data.ETF_Data.NetExpenseRatio !== undefined && data.ETF_Data.NetExpenseRatio !== null && data.ETF_Data.NetExpenseRatio > 0) {
+      // NetExpenseRatio is in decimal form (e.g., 0.0015 for 0.15%)
+      const mer = data.ETF_Data.NetExpenseRatio * 100;
+      return { mer: Math.round(mer * 100) / 100, source: 'EODHD ETF Data' };
+    }
+    if (data.ETF_Data.Ongoing_Charge !== undefined && data.ETF_Data.Ongoing_Charge !== null && data.ETF_Data.Ongoing_Charge > 0) {
+      const mer = data.ETF_Data.Ongoing_Charge * 100;
+      return { mer: Math.round(mer * 100) / 100, source: 'EODHD ETF Ongoing Charge' };
+    }
+    if (data.ETF_Data.Max_Annual_Mgmt_Charge !== undefined && data.ETF_Data.Max_Annual_Mgmt_Charge !== null && data.ETF_Data.Max_Annual_Mgmt_Charge > 0) {
+      const mer = data.ETF_Data.Max_Annual_Mgmt_Charge * 100;
+      return { mer: Math.round(mer * 100) / 100, source: 'EODHD ETF Mgmt Charge' };
+    }
+  }
+  
+  // For Mutual Funds
+  if (data.MutualFund) {
+    if (data.MutualFund.Fund_NetExpenseRatio !== undefined && data.MutualFund.Fund_NetExpenseRatio !== null && data.MutualFund.Fund_NetExpenseRatio > 0) {
+      const mer = data.MutualFund.Fund_NetExpenseRatio * 100;
+      return { mer: Math.round(mer * 100) / 100, source: 'EODHD Mutual Fund Data' };
+    }
+    if (data.MutualFund.Net_Expense_Ratio !== undefined && data.MutualFund.Net_Expense_Ratio !== null && data.MutualFund.Net_Expense_Ratio > 0) {
+      const mer = data.MutualFund.Net_Expense_Ratio * 100;
+      return { mer: Math.round(mer * 100) / 100, source: 'EODHD Mutual Fund Data' };
+    }
+    if (data.MutualFund.Expense_Ratio !== undefined && data.MutualFund.Expense_Ratio !== null && data.MutualFund.Expense_Ratio > 0) {
+      const mer = data.MutualFund.Expense_Ratio * 100;
+      return { mer: Math.round(mer * 100) / 100, source: 'EODHD Mutual Fund Data' };
+    }
+  }
+  
+  return null;
+}
+
+// Lookup fundamentals for a specific ticker
+async function lookupFundamentals(ticker: string, apiKey: string): Promise<{ name: string; mer: number; source: string } | null> {
+  const url = `https://eodhd.com/api/fundamentals/${ticker}?api_token=${apiKey}&fmt=json`;
+  
+  console.log(`[fund-lookup] Fetching fundamentals for: ${ticker}`);
+  
+  try {
+    const response = await fetch(url);
+    
+    if (!response.ok) {
+      console.log(`[fund-lookup] Fundamentals returned ${response.status} for ${ticker}`);
+      return null;
+    }
+    
+    const data: EODHDFundamentals = await response.json();
+    
+    if (!data || typeof data !== 'object') {
+      console.log(`[fund-lookup] Invalid response for ${ticker}`);
+      return null;
+    }
+    
+    const fundName = data.General?.Name || ticker;
+    const merData = extractMER(data);
+    
+    if (merData) {
+      console.log(`[fund-lookup] Found MER for ${ticker}: ${merData.mer}%`);
+      return {
+        name: fundName,
+        mer: merData.mer,
+        source: merData.source
+      };
+    }
+    
+    console.log(`[fund-lookup] No MER data in fundamentals for ${ticker} (found fund: ${fundName})`);
+    return null;
+  } catch (error) {
+    console.error(`[fund-lookup] Error fetching fundamentals for ${ticker}:`, error);
+    return null;
+  }
+}
+
+async function lookupWithEODHD(fundCode: string, apiKey: string): Promise<FundLookupResponse | null> {
+  // Step 1: Try direct lookup with exchange suffixes
+  for (const suffix of EXCHANGE_SUFFIXES) {
+    const ticker = `${fundCode}${suffix}`;
+    const result = await lookupFundamentals(ticker, apiKey);
+    
+    if (result) {
+      return {
+        success: true,
+        fundCode: fundCode,
+        fundName: result.name,
+        mer: result.mer,
+        source: result.source
+      };
+    }
+  }
+  
+  // Step 2: Use search API to find the ticker
+  const searchResults = await searchForTicker(fundCode, apiKey);
+  
+  for (const ticker of searchResults) {
+    const result = await lookupFundamentals(ticker, apiKey);
+    
+    if (result) {
+      return {
+        success: true,
+        fundCode: fundCode,
+        fundName: result.name,
+        mer: result.mer,
+        source: result.source
+      };
+    }
+  }
+  
+  return null;
 }
 
 Deno.serve(async (req) => {
@@ -87,7 +291,6 @@ Deno.serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  // Apply rate limiting
   const clientIP = getClientIP(req);
   const rateLimit = isRateLimited(clientIP);
   
@@ -104,10 +307,7 @@ Deno.serve(async (req) => {
         headers: { 
           ...corsHeaders, 
           'Content-Type': 'application/json',
-          'Retry-After': Math.ceil(rateLimit.resetIn / 1000).toString(),
-          'X-RateLimit-Limit': RATE_LIMIT_MAX_REQUESTS.toString(),
-          'X-RateLimit-Remaining': '0',
-          'X-RateLimit-Reset': Math.ceil(rateLimit.resetIn / 1000).toString()
+          'Retry-After': Math.ceil(rateLimit.resetIn / 1000).toString()
         } 
       }
     );
@@ -116,9 +316,7 @@ Deno.serve(async (req) => {
   try {
     const { fundCode } = await req.json() as FundLookupRequest;
 
-    // Input validation - check for empty input
     if (!fundCode || fundCode.trim() === '') {
-      console.log('[fund-lookup] Validation failed: empty fund code');
       return new Response(
         JSON.stringify({ success: false, fundCode: '', error: 'Fund code is required' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -127,244 +325,49 @@ Deno.serve(async (req) => {
 
     const cleanedCode = fundCode.trim().toUpperCase();
 
-    // Validate fund code length (typically 3-20 characters)
-    if (cleanedCode.length < 3 || cleanedCode.length > 20) {
-      console.log('[fund-lookup] Validation failed: invalid length');
+    if (cleanedCode.length < 2 || cleanedCode.length > 20) {
       return new Response(
         JSON.stringify({ success: false, fundCode: cleanedCode, error: 'Invalid fund code length' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Validate fund code format (alphanumeric only)
-    if (!/^[A-Z0-9]+$/.test(cleanedCode)) {
-      console.log('[fund-lookup] Validation failed: invalid characters');
+    if (!/^[A-Z0-9.-]+$/.test(cleanedCode)) {
       return new Response(
-        JSON.stringify({ success: false, fundCode: cleanedCode, error: 'Fund code must contain only letters and numbers' }),
+        JSON.stringify({ success: false, fundCode: cleanedCode, error: 'Fund code must contain only letters, numbers, dots, and hyphens' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
     console.log(`[fund-lookup] Looking up fund: ${cleanedCode}`);
 
-    // Step 1: Use Firecrawl to search for the fund fact sheet
-    const firecrawlApiKey = Deno.env.get('FIRECRAWL_API_KEY');
-    if (!firecrawlApiKey) {
-      console.error('[fund-lookup] FIRECRAWL_API_KEY not configured');
+    const eodhdApiKey = Deno.env.get('EODHD_API_KEY');
+    if (!eodhdApiKey) {
+      console.error('[fund-lookup] EODHD_API_KEY not configured');
       return new Response(
         JSON.stringify({ success: false, fundCode: cleanedCode, error: 'Unable to process request. Please try again later.' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Search strategies in order of preference
-    const searchStrategies = [
-      // Strategy 1: Direct Morningstar search
-      `${cleanedCode} morningstar.ca fund MER`,
-      // Strategy 2: Fund fact sheet search  
-      `"${cleanedCode}" "fund facts" MER Canada`,
-      // Strategy 3: Broader fund search
-      `${cleanedCode} mutual fund MER management expense ratio Canada`,
-    ];
-
-    let searchData: any = null;
-    let searchResponse!: Response;
+    const result = await lookupWithEODHD(cleanedCode, eodhdApiKey);
     
-    for (const searchQuery of searchStrategies) {
-      console.log(`[fund-lookup] Trying search: ${searchQuery}`);
-      
-      searchResponse = await fetch('https://api.firecrawl.dev/v1/search', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${firecrawlApiKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          query: searchQuery,
-          limit: 5,
-          lang: 'en',
-          country: 'CA',
-          scrapeOptions: {
-            formats: ['markdown'],
-            onlyMainContent: true
-          }
-        }),
-      });
-
-      searchData = await searchResponse.json();
-      
-      console.log(`[fund-lookup] Search response: success=${searchData.success}, results=${searchData.data?.length || 0}`);
-      
-      // If we found results, break out of the loop
-      if (searchResponse.ok && searchData.success && searchData.data?.length > 0) {
-        console.log(`[fund-lookup] Found ${searchData.data.length} results with query: ${searchQuery}`);
-        break;
-      }
-    }
-
-    if (!searchResponse.ok || !searchData.success) {
-      console.error('[fund-lookup] Search failed for fund:', cleanedCode, 'status:', searchResponse.status);
+    if (result) {
+      console.log(`[fund-lookup] Success: ${cleanedCode} -> ${result.fundName} (MER: ${result.mer}%)`);
       return new Response(
-        JSON.stringify({ 
-          success: false, 
-          fundCode: cleanedCode, 
-          error: 'Could not find fund information. Please verify the fund code.' 
-        }),
-        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify(result),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Combine all markdown content from search results
-    const combinedContent = searchData.data
-      ?.map((result: any) => `Source: ${result.url}\n${result.markdown || result.description || ''}`)
-      .join('\n\n---\n\n') || '';
-
-    if (!combinedContent || combinedContent.length < 50) {
-      console.log('[fund-lookup] No substantial content found for fund:', cleanedCode);
-      return new Response(
-        JSON.stringify({ 
-          success: false, 
-          fundCode: cleanedCode, 
-          error: 'Could not find fund fact sheet. Please verify the fund code is correct.' 
-        }),
-        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    console.log(`[fund-lookup] Found content for ${cleanedCode}, processing...`);
-
-    // Step 2: Use AI to extract the MER from the content
-    const lovableApiKey = Deno.env.get('LOVABLE_API_KEY');
-    if (!lovableApiKey) {
-      console.error('[fund-lookup] LOVABLE_API_KEY not configured');
-      return new Response(
-        JSON.stringify({ success: false, fundCode: cleanedCode, error: 'Unable to process request. Please try again later.' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${lovableApiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
-        messages: [
-          {
-            role: 'system',
-            content: `You are a financial data extraction expert. Your task is to extract the Management Expense Ratio (MER) from Canadian fund fact sheets and fund documents. 
-
-The MER is typically expressed as a percentage (e.g., 2.35%, 1.50%, 0.25%). It may also be called:
-- Management Expense Ratio
-- MER
-- Total annual fund operating expenses
-- Expense ratio
-
-IMPORTANT: Return ONLY a valid JSON object with these exact fields:
-- fundName: The official name of the fund (string)
-- mer: The MER as a decimal number (e.g., 2.35 for 2.35%, NOT 0.0235)
-- source: Where you found this information (string)
-- confidence: "high", "medium", or "low"
-
-If you cannot find a clear MER, return:
-{ "fundName": null, "mer": null, "source": null, "confidence": "low", "error": "Could not find MER" }
-
-Return ONLY the JSON object, no other text.`
-          },
-          {
-            role: 'user',
-            content: `Extract the MER for fund code "${cleanedCode}" from the following fund documents:\n\n${combinedContent.substring(0, 15000)}`
-          }
-        ],
-        tools: [
-          {
-            type: 'function',
-            function: {
-              name: 'extract_fund_mer',
-              description: 'Extract the MER and fund details from fund documents',
-              parameters: {
-                type: 'object',
-                properties: {
-                  fundName: { type: 'string', description: 'The official fund name' },
-                  mer: { type: 'number', description: 'The MER as a percentage number (e.g., 2.35 for 2.35%)' },
-                  source: { type: 'string', description: 'Where the information was found' },
-                  confidence: { type: 'string', enum: ['high', 'medium', 'low'] },
-                  error: { type: 'string', description: 'Error message if MER could not be found' }
-                },
-                required: ['confidence']
-              }
-            }
-          }
-        ],
-        tool_choice: { type: 'function', function: { name: 'extract_fund_mer' } }
-      }),
-    });
-
-    const aiData = await aiResponse.json();
-
-    if (!aiResponse.ok) {
-      console.error('[fund-lookup] AI processing failed for fund:', cleanedCode, 'status:', aiResponse.status);
-      return new Response(
-        JSON.stringify({ 
-          success: false, 
-          fundCode: cleanedCode, 
-          error: 'Unable to analyze fund data. Please try again later.' 
-        }),
-        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // Extract the tool call result
-    let extractedData: any = null;
-    
-    if (aiData.choices?.[0]?.message?.tool_calls?.[0]?.function?.arguments) {
-      try {
-        extractedData = JSON.parse(aiData.choices[0].message.tool_calls[0].function.arguments);
-      } catch (e) {
-        console.error('[fund-lookup] Failed to parse AI response for fund:', cleanedCode);
-      }
-    }
-
-    // Fallback: try to parse from content if tool call didn't work
-    if (!extractedData && aiData.choices?.[0]?.message?.content) {
-      try {
-        const content = aiData.choices[0].message.content;
-        const jsonMatch = content.match(/\{[\s\S]*\}/);
-        if (jsonMatch) {
-          extractedData = JSON.parse(jsonMatch[0]);
-        }
-      } catch (e) {
-        console.error('[fund-lookup] Failed to parse AI content for fund:', cleanedCode);
-      }
-    }
-
-    if (!extractedData || extractedData.error || extractedData.mer === null) {
-      console.log('[fund-lookup] Could not extract MER for fund:', cleanedCode);
-      return new Response(
-        JSON.stringify({ 
-          success: false, 
-          fundCode: cleanedCode, 
-          error: 'Could not determine MER from available documents. Please verify the fund code.' 
-        }),
-        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    console.log(`[fund-lookup] Successfully extracted MER for ${cleanedCode}`);
-
-    const response: FundLookupResponse = {
-      success: true,
-      fundCode: cleanedCode,
-      fundName: extractedData.fundName || cleanedCode,
-      mer: extractedData.mer,
-      source: extractedData.source || 'Fund Fact Sheet'
-    };
-
+    console.log(`[fund-lookup] Could not find MER for fund: ${cleanedCode}`);
     return new Response(
-      JSON.stringify(response),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      JSON.stringify({ 
+        success: false, 
+        fundCode: cleanedCode, 
+        error: 'Could not find MER for this fund code. Please verify the code is correct or enter the MER manually.' 
+      }),
+      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
   } catch (error) {
