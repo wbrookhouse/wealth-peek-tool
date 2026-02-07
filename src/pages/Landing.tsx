@@ -1,25 +1,10 @@
-import { useEffect, useRef, useState, lazy, Suspense } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Star, Play, ChevronDown, Menu, X, DollarSign, TrendingUp, Shield } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-
-const Spline = lazy(() => import('@splinetool/react-spline'));
-
-function SplineBackground() {
-  return (
-    <div className="absolute inset-0 z-0">
-      <Suspense fallback={
-        <div className="absolute inset-0 bg-gradient-purple star-bg" />
-      }>
-        <Spline 
-          scene="https://prod.spline.design/6Wq1Q7YGyM-iab9i/scene.splinecode"
-          className="w-full h-full"
-        />
-      </Suspense>
-      <div className="absolute inset-0 bg-gradient-to-b from-transparent via-background/50 to-background" />
-    </div>
-  );
-}
+import { Card } from '@/components/ui/card';
+import { SplineScene } from '@/components/ui/splite';
+import { Spotlight } from '@/components/ui/spotlight';
 
 function Navbar() {
   const navigate = useNavigate();
@@ -130,10 +115,7 @@ function Navbar() {
 
           {/* Desktop CTA */}
           <div className="hidden lg:flex items-center gap-4">
-            <Button
-              variant="ghost"
-              className="text-sm"
-            >
+            <Button variant="ghost" className="text-sm">
               Contact
             </Button>
             <Button
@@ -204,91 +186,8 @@ function Navbar() {
   );
 }
 
-function HeroContent({ heroContentRef }: { heroContentRef: React.RefObject<HTMLDivElement> }) {
+function HeroSection() {
   const navigate = useNavigate();
-
-  return (
-    <div 
-      ref={heroContentRef}
-      className="relative z-10 pt-32 pb-20 md:pt-40 md:pb-32"
-    >
-      <div className="container mx-auto px-4">
-        <div className="max-w-3xl mx-auto text-center space-y-8">
-          <h1 className="font-display text-4xl md:text-5xl lg:text-6xl font-bold leading-tight animate-fade-in">
-            Discover what you're{' '}
-            <span className="text-gradient-green">really paying</span>{' '}
-            in fees.
-          </h1>
-
-          <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto animate-fade-in" style={{ animationDelay: '0.1s' }}>
-            Uncover hidden costs in your mutual funds and seg funds. 
-            Our calculator reveals the true impact of management fees on your wealth.
-          </p>
-
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 animate-fade-in" style={{ animationDelay: '0.2s' }}>
-            <Button
-              onClick={() => navigate('/calculator')}
-              size="lg"
-              className="bg-gradient-green hover:opacity-90 text-primary-foreground font-semibold shadow-green px-8 py-6 text-lg"
-            >
-              Calculate My Fees
-            </Button>
-            <Button
-              variant="outline"
-              size="lg"
-              className="gap-2 px-8 py-6 text-lg border-border/50 hover:bg-secondary/50"
-            >
-              <Play className="w-5 h-5" />
-              Watch Demo
-            </Button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function FeatureCards() {
-  const features = [
-    {
-      icon: DollarSign,
-      title: 'Discover Hidden Fees',
-      description: 'Automatically lookup MER rates for any Canadian fund code and see the real cost.'
-    },
-    {
-      icon: TrendingUp,
-      title: 'Calculate True Costs',
-      description: 'See exactly how much you\'re paying annually and what that means over time.'
-    },
-    {
-      icon: Shield,
-      title: 'Compare Your Services',
-      description: 'Understand what you\'re getting for your fees and whether it\'s worth it.'
-    }
-  ];
-
-  return (
-    <section className="relative z-10 py-20">
-      <div className="container mx-auto px-4">
-        <div className="grid md:grid-cols-3 gap-6">
-          {features.map((feature, index) => (
-            <div
-              key={feature.title}
-              className="p-6 rounded-xl bg-card/50 backdrop-blur-sm border border-border/30 hover:border-primary/30 transition-all duration-300 hover:shadow-green animate-fade-in"
-              style={{ animationDelay: `${0.3 + index * 0.1}s` }}
-            >
-              <feature.icon className="w-10 h-10 text-primary mb-4" />
-              <h3 className="font-display text-xl font-semibold mb-2">{feature.title}</h3>
-              <p className="text-muted-foreground">{feature.description}</p>
-            </div>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
-
-export default function Landing() {
   const heroContentRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -313,16 +212,112 @@ export default function Landing() {
   }, []);
 
   return (
+    <Card className="w-full min-h-[600px] md:min-h-[700px] bg-black/[0.96] relative overflow-hidden border-0 rounded-none">
+      <Spotlight
+        className="-top-40 left-0 md:left-60 md:-top-20"
+        fill="hsl(145 80% 50%)"
+      />
+
+      <div className="flex flex-col md:flex-row h-full min-h-[600px] md:min-h-[700px] pt-16">
+        {/* Left content */}
+        <div 
+          ref={heroContentRef}
+          className="flex-1 p-8 md:p-12 lg:p-16 relative z-10 flex flex-col justify-center"
+        >
+          <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold bg-clip-text text-transparent bg-gradient-to-b from-neutral-50 to-neutral-400">
+            Discover what you're{' '}
+            <span className="text-gradient-green">really paying</span>{' '}
+            in fees.
+          </h1>
+          <p className="mt-6 text-neutral-300 max-w-lg text-lg">
+            Uncover hidden costs in your mutual funds and seg funds. 
+            Our calculator reveals the true impact of management fees on your wealth.
+          </p>
+          
+          <div className="flex flex-col sm:flex-row gap-4 mt-8">
+            <Button
+              onClick={() => navigate('/calculator')}
+              size="lg"
+              className="bg-gradient-green hover:opacity-90 text-primary-foreground font-semibold shadow-green px-8"
+            >
+              Calculate My Fees
+            </Button>
+            <Button
+              variant="outline"
+              size="lg"
+              className="gap-2 border-neutral-700 hover:bg-neutral-800 text-neutral-200"
+            >
+              <Play className="w-4 h-4" />
+              Watch Demo
+            </Button>
+          </div>
+        </div>
+
+        {/* Right content - 3D Scene */}
+        <div className="flex-1 relative min-h-[300px] md:min-h-0">
+          <SplineScene
+            scene="https://prod.spline.design/kZDDjO5HuC9GJUM2/scene.splinecode"
+            className="w-full h-full"
+          />
+        </div>
+      </div>
+    </Card>
+  );
+}
+
+function FeatureCards() {
+  const features = [
+    {
+      icon: DollarSign,
+      title: 'Discover Hidden Fees',
+      description: 'Automatically lookup MER rates for any Canadian fund code and see the real cost.'
+    },
+    {
+      icon: TrendingUp,
+      title: 'Calculate True Costs',
+      description: 'See exactly how much you\'re paying annually and what that means over time.'
+    },
+    {
+      icon: Shield,
+      title: 'Compare Your Services',
+      description: 'Understand what you\'re getting for your fees and whether it\'s worth it.'
+    }
+  ];
+
+  return (
+    <section className="relative z-10 py-20 bg-background">
+      <div className="container mx-auto px-4">
+        <div className="grid md:grid-cols-3 gap-6">
+          {features.map((feature, index) => (
+            <div
+              key={feature.title}
+              className="p-6 rounded-xl bg-card/50 backdrop-blur-sm border border-border/30 hover:border-primary/30 transition-all duration-300 hover:shadow-green animate-fade-in"
+              style={{ animationDelay: `${0.3 + index * 0.1}s` }}
+            >
+              <feature.icon className="w-10 h-10 text-primary mb-4" />
+              <h3 className="font-display text-xl font-semibold mb-2">{feature.title}</h3>
+              <p className="text-muted-foreground">{feature.description}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+export default function Landing() {
+  const navigate = useNavigate();
+
+  return (
     <div className="min-h-screen bg-background overflow-x-hidden">
-      <SplineBackground />
       <Navbar />
       
       <main>
-        <HeroContent heroContentRef={heroContentRef} />
+        <HeroSection />
         <FeatureCards />
         
-        {/* Additional content section */}
-        <section className="relative z-10 py-20 bg-gradient-purple">
+        {/* CTA Section */}
+        <section className="relative z-10 py-20 galaxy-bg">
           <div className="container mx-auto px-4 text-center">
             <h2 className="font-display text-3xl md:text-4xl font-bold mb-6">
               Ready to see your <span className="text-gradient-green">true costs</span>?
@@ -331,7 +326,7 @@ export default function Landing() {
               It only takes a minute to discover what you're really paying in investment fees.
             </p>
             <Button
-              onClick={() => window.location.href = '/calculator'}
+              onClick={() => navigate('/calculator')}
               size="lg"
               className="bg-gradient-green hover:opacity-90 text-primary-foreground font-semibold shadow-green px-8"
             >
@@ -342,7 +337,7 @@ export default function Landing() {
       </main>
 
       {/* Footer */}
-      <footer className="relative z-10 py-8 border-t border-border/30">
+      <footer className="relative z-10 py-8 border-t border-border/30 bg-background">
         <div className="container mx-auto px-4">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-2">
