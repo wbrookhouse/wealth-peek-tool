@@ -96,8 +96,8 @@ export function InvestmentForm({
     const numAmount = parseFloat(amount.replace(/,/g, ''));
     if (isNaN(numAmount) || numAmount <= 0) return;
     
-    // If this is the first fund and we don't have user info, show the modal
-    if (investments.length === 0 && !userInfo) {
+    // If user tries to add a second fund without signing up, show the modal
+    if (investments.length >= 1 && !userInfo) {
       setPendingFund({ fundCode: fundCode.trim(), amount: numAmount, accountType });
       setShowUserModal(true);
       return;
@@ -387,9 +387,12 @@ export function InvestmentForm({
       <Dialog open={showUserModal} onOpenChange={setShowUserModal}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Almost there!</DialogTitle>
-            <DialogDescription>
-              Enter your details to see your complete fee analysis and receive your personalized report.
+            <DialogTitle className="text-xl">🔓 Unlock Your Full Analysis</DialogTitle>
+            <DialogDescription className="text-base pt-2">
+              Want to add more investments, compare all your holdings, and receive your personalized fee report? 
+              <span className="block mt-2 font-medium text-foreground">
+                Enter the email where you'd like your complete report sent.
+              </span>
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleUserSubmit} className="space-y-4 pt-4">
@@ -407,7 +410,7 @@ export function InvestmentForm({
             </div>
             <div>
               <label htmlFor="email" className="text-sm font-medium text-muted-foreground mb-1.5 block">
-                Email Address
+                Email for Your Report
               </label>
               <Input
                 id="email"
@@ -427,8 +430,11 @@ export function InvestmentForm({
               type="submit" 
               className="w-full bg-gradient-green hover:opacity-90 text-primary-foreground font-semibold shadow-green"
             >
-              Continue to Results
+              Unlock Full Access
             </Button>
+            <p className="text-xs text-muted-foreground text-center">
+              We'll send your detailed fee breakdown straight to your inbox.
+            </p>
           </form>
         </DialogContent>
       </Dialog>
