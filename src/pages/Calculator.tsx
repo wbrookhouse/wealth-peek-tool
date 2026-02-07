@@ -1,5 +1,3 @@
-import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { Header } from '@/components/Header';
 import { StepIndicator } from '@/components/StepIndicator';
 import { InvestmentForm } from '@/components/InvestmentForm';
@@ -8,14 +6,10 @@ import { ComparisonReport } from '@/components/ComparisonReport';
 import { Button } from '@/components/ui/button';
 import { useCalculator } from '@/hooks/useCalculator';
 import { ArrowLeft, ArrowRight } from 'lucide-react';
-import { UserInfo } from '@/types/calculator';
 
 const STEP_LABELS = ['Your Investments', 'Current Services', 'Your Report'];
 
 const Calculator = () => {
-  const navigate = useNavigate();
-  const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
-  
   const {
     investments,
     services,
@@ -31,22 +25,6 @@ const Calculator = () => {
     setMeetingsPerYear,
     setCurrentStep
   } = useCalculator();
-
-  // Check for user info on mount
-  useEffect(() => {
-    const stored = sessionStorage.getItem('userInfo');
-    if (stored) {
-      setUserInfo(JSON.parse(stored));
-    } else {
-      // Redirect to sign up if no user info
-      navigate('/');
-    }
-  }, [navigate]);
-
-  // Don't render until we confirm user is signed in
-  if (!userInfo) {
-    return null;
-  }
 
   const canProceed = () => {
     switch (currentStep) {
