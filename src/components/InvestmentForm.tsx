@@ -3,15 +3,19 @@ import { Plus, Loader2, X, AlertCircle, Edit2, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
-import { Investment } from '@/types/calculator';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Investment, AccountType, ACCOUNT_TYPES, UserInfo } from '@/types/calculator';
 import { formatCurrency, formatPercent } from '@/lib/fundLookup';
 import { cn } from '@/lib/utils';
 
 interface InvestmentFormProps {
   investments: Investment[];
-  onAddInvestment: (fundCode: string, amount: number) => void;
+  userInfo: UserInfo | null;
+  onAddInvestment: (fundCode: string, amount: number, accountType: AccountType) => void;
   onRemoveInvestment: (id: string) => void;
   onUpdateMER: (id: string, mer: number) => void;
+  onSetUser: (info: UserInfo) => void;
   totalInvested: number;
   totalFees: number;
   weightedMER: number;
@@ -19,17 +23,27 @@ interface InvestmentFormProps {
 
 export function InvestmentForm({
   investments,
+  userInfo,
   onAddInvestment,
   onRemoveInvestment,
   onUpdateMER,
+  onSetUser,
   totalInvested,
   totalFees,
   weightedMER
 }: InvestmentFormProps) {
   const [fundCode, setFundCode] = useState('');
   const [amount, setAmount] = useState('');
+  const [accountType, setAccountType] = useState<AccountType>('RRSP');
   const [editingMER, setEditingMER] = useState<string | null>(null);
   const [editMERValue, setEditMERValue] = useState('');
+  
+  // User info modal state
+  const [showUserModal, setShowUserModal] = useState(false);
+  const [pendingFund, setPendingFund] = useState<{ fundCode: string; amount: number; accountType: AccountType } | null>(null);
+  const [firstName, setFirstName] = useState('');
+  const [email, setEmail] = useState('');
+  const [userError, setUserError] = useState('');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -38,7 +52,44 @@ export function InvestmentForm({
     const numAmount = parseFloat(amount.replace(/,/g, ''));
     if (isNaN(numAmount) || numAmount <= 0) return;
     
-    onAddInvestment(fundCode.trim(), numAmount);
+    // If this is the first fund and we don't have user info, show the modal
+    if (investments.length === 0 && !userInfo) {
+      setPendingFund({ fundCode: fundCode.trim(), amount: numAmount, accountType });
+      setShowUserModal(true);
+      return;
+    }
+    
+    onAddInvestment(fundCode.trim(), numAmount, accountType);
+    setFundCode('');
+    setAmount('');
+  };
+
+  const handleUserSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setUserError('');
+    
+    if (!firstName.trim()) {
+      setUserError('Please enter your first name');
+      return;
+    }
+    
+    if (!email.trim() || !email.includes('@')) {
+      setUserError('Please enter a valid email address');
+      return;
+    }
+    
+    onSetUser({
+      firstName: firstName.trim(),
+      email: email.trim(),
+      hasIncorporatedBusiness: false
+    });
+    
+    if (pendingFund) {
+      onAddInvestment(pendingFund.fundCode, pendingFund.amount, pendingFund.accountType);
+      setPendingFund(null);
+    }
+    
+    setShowUserModal(false);
     setFundCode('');
     setAmount('');
   };
@@ -79,54 +130,73 @@ export function InvestmentForm({
           <Plus className="w-5 h-5 text-primary" />
           <h3 className="font-semibold text-lg">Add a Fund</h3>
         </div>
-        <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-4">
-          <div className="flex-1">
-            <label htmlFor="fundCode" className="text-sm font-medium text-muted-foreground mb-1.5 block">
-              Fund Code
-            </label>
-            <Input
-              id="fundCode"
-              value={fundCode}
-              onChange={(e) => setFundCode(e.target.value.toUpperCase())}
-              placeholder="e.g., RBF1018"
-              className="bg-background/50 border-border/50 focus:border-primary uppercase"
-              disabled={isLoading}
-            />
-          </div>
-          <div className="flex-1">
-            <label htmlFor="amount" className="text-sm font-medium text-muted-foreground mb-1.5 block">
-              Amount Invested
-            </label>
-            <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div>
+              <label htmlFor="fundCode" className="text-sm font-medium text-muted-foreground mb-1.5 block">
+                Fund Code
+              </label>
               <Input
-                id="amount"
-                type="text"
-                inputMode="decimal"
-                value={amount}
-                onChange={handleAmountChange}
-                placeholder="100,000"
-                className="bg-background/50 border-border/50 focus:border-primary pl-7"
+                id="fundCode"
+                value={fundCode}
+                onChange={(e) => setFundCode(e.target.value.toUpperCase())}
+                placeholder="e.g., RBF1018"
+                className="bg-background/50 border-border/50 focus:border-primary uppercase"
                 disabled={isLoading}
               />
             </div>
-          </div>
-          <div className="flex items-end">
-            <Button 
-              type="submit" 
-              disabled={!fundCode.trim() || !amount || isLoading}
-              size="lg"
-              className="w-full sm:w-auto bg-gradient-green hover:opacity-90 text-primary-foreground font-semibold shadow-green px-8"
-            >
-              {isLoading ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <>
-                  <Plus className="w-5 h-5 mr-2" />
-                  Add Fund
-                </>
-              )}
-            </Button>
+            <div>
+              <label htmlFor="amount" className="text-sm font-medium text-muted-foreground mb-1.5 block">
+                Amount Invested
+              </label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                <Input
+                  id="amount"
+                  type="text"
+                  inputMode="decimal"
+                  value={amount}
+                  onChange={handleAmountChange}
+                  placeholder="100,000"
+                  className="bg-background/50 border-border/50 focus:border-primary pl-7"
+                  disabled={isLoading}
+                />
+              </div>
+            </div>
+            <div>
+              <label htmlFor="accountType" className="text-sm font-medium text-muted-foreground mb-1.5 block">
+                Account Type
+              </label>
+              <Select value={accountType} onValueChange={(value) => setAccountType(value as AccountType)}>
+                <SelectTrigger className="bg-background/50 border-border/50">
+                  <SelectValue placeholder="Select account" />
+                </SelectTrigger>
+                <SelectContent>
+                  {ACCOUNT_TYPES.map((type) => (
+                    <SelectItem key={type} value={type}>
+                      {type}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex items-end">
+              <Button 
+                type="submit" 
+                disabled={!fundCode.trim() || !amount || isLoading}
+                size="lg"
+                className="w-full bg-gradient-green hover:opacity-90 text-primary-foreground font-semibold shadow-green"
+              >
+                {isLoading ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <>
+                    <Plus className="w-5 h-5 mr-2" />
+                    Add Fund
+                  </>
+                )}
+              </Button>
+            </div>
           </div>
         </form>
       </Card>
@@ -144,11 +214,14 @@ export function InvestmentForm({
                   inv.error && "border-destructive/50"
                 )}
               >
-                <div className="flex items-center justify-between gap-4">
+                <div className="flex items-center justify-between gap-4 flex-wrap">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <span className="font-mono font-semibold text-primary">
                         {inv.fundCode}
+                      </span>
+                      <span className="text-xs px-2 py-0.5 rounded bg-secondary text-secondary-foreground">
+                        {inv.accountType}
                       </span>
                       {inv.isLoading && (
                         <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
@@ -236,8 +309,73 @@ export function InvestmentForm({
             ))}
           </div>
 
+          {/* Summary Card */}
+          {totalFees > 0 && (
+            <Card className="p-4 bg-primary/10 border-primary/30">
+              <div className="flex justify-between items-center">
+                <div>
+                  <p className="text-sm text-muted-foreground">Total Annual Fees</p>
+                  <p className="text-2xl font-bold text-primary">{formatCurrency(totalFees)}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-sm text-muted-foreground">Weighted MER</p>
+                  <p className="text-xl font-semibold">{formatPercent(weightedMER)}</p>
+                </div>
+              </div>
+            </Card>
+          )}
         </div>
       )}
+
+      {/* User Info Modal */}
+      <Dialog open={showUserModal} onOpenChange={setShowUserModal}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Almost there!</DialogTitle>
+            <DialogDescription>
+              Enter your details to see your complete fee analysis and receive your personalized report.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleUserSubmit} className="space-y-4 pt-4">
+            <div>
+              <label htmlFor="firstName" className="text-sm font-medium text-muted-foreground mb-1.5 block">
+                First Name
+              </label>
+              <Input
+                id="firstName"
+                value={firstName}
+                onChange={(e) => setFirstName(e.target.value)}
+                placeholder="Enter your first name"
+                className="bg-background/50 border-border/50 focus:border-primary"
+              />
+            </div>
+            <div>
+              <label htmlFor="email" className="text-sm font-medium text-muted-foreground mb-1.5 block">
+                Email Address
+              </label>
+              <Input
+                id="email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="you@example.com"
+                className="bg-background/50 border-border/50 focus:border-primary"
+              />
+            </div>
+            
+            {userError && (
+              <p className="text-destructive text-sm text-center">{userError}</p>
+            )}
+
+            <Button 
+              type="submit" 
+              className="w-full bg-gradient-green hover:opacity-90 text-primary-foreground font-semibold shadow-green"
+            >
+              Continue to Results
+            </Button>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
