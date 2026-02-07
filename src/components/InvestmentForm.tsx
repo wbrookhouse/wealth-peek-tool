@@ -435,9 +435,16 @@ export function InvestmentForm({
 
       {/* Add Fund Form */}
       <Card className="p-6 bg-card/50 backdrop-blur border-primary/30 shadow-green">
-        <div className="flex items-center gap-2 mb-4">
-          <Plus className="w-5 h-5 text-primary" />
-          <h3 className="font-semibold text-lg">Add Another Fund</h3>
+        <div className="mb-4 pb-4 border-b border-border/50">
+          <div className="flex items-center gap-2 mb-2">
+            <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
+              <Plus className="w-4 h-4 text-primary" />
+            </div>
+            <h3 className="font-semibold text-lg">Add Another Fund</h3>
+          </div>
+          <p className="text-sm text-muted-foreground ml-10">
+            👇 Enter your fund details in the fields below, then click "Add Fund"
+          </p>
         </div>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
