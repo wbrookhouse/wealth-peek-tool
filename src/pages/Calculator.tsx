@@ -31,8 +31,8 @@ const Calculator = () => {
   const canProceed = () => {
     switch (currentStep) {
       case 1:
-        // Need at least one valid fund AND user info (captured after first fund)
-        return investments.some(inv => inv.mer !== null) && userInfo !== null;
+        // Need at least one valid fund to proceed (user info is optional)
+        return investments.some(inv => inv.mer !== null);
       case 2:
         return true;
       default:

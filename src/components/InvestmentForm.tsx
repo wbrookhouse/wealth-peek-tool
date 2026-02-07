@@ -380,6 +380,24 @@ export function InvestmentForm({
               </div>
             </Card>
           )}
+
+          {/* Prompt to add more funds after first one */}
+          {investments.length === 1 && !userInfo && totalFees > 0 && (
+            <Card className="p-5 bg-gradient-to-r from-primary/5 to-accent/10 border-primary/30 text-center space-y-3">
+              <p className="text-lg font-medium">
+                💡 Have more investments? Get the full picture of your fees.
+              </p>
+              <p className="text-muted-foreground text-sm">
+                Add all your funds to see your complete fee analysis and receive a personalized report.
+              </p>
+              <Button 
+                onClick={() => setShowUserModal(true)}
+                className="bg-gradient-green hover:opacity-90 text-primary-foreground font-semibold shadow-green"
+              >
+                Add More Funds
+              </Button>
+            </Card>
+          )}
         </div>
       )}
 
