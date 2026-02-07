@@ -162,6 +162,21 @@
     }
   }
 
+  @keyframes spotlight {
+    0% {
+      opacity: 0;
+      transform: translate(-72%, -62%) scale(0.5);
+    }
+    100% {
+      opacity: 1;
+      transform: translate(-50%,-40%) scale(1);
+    }
+  }
+
+  .animate-spotlight {
+    animation: spotlight 2s ease .75s 1 forwards;
+  }
+
   .star-bg {
     background-image: 
       radial-gradient(1px 1px at 20% 30%, hsl(145 85% 65% / 0.4), transparent),
@@ -170,5 +185,13 @@
       radial-gradient(2px 2px at 80% 50%, hsl(145 85% 65% / 0.4), transparent),
       radial-gradient(1px 1px at 10% 80%, hsl(145 85% 65% / 0.3), transparent),
       radial-gradient(1px 1px at 90% 10%, hsl(145 85% 65% / 0.4), transparent);
+  }
+
+  .galaxy-bg {
+    background: 
+      radial-gradient(ellipse at 50% 0%, hsl(270 50% 15% / 0.8) 0%, transparent 50%),
+      radial-gradient(ellipse at 100% 50%, hsl(145 80% 30% / 0.15) 0%, transparent 40%),
+      radial-gradient(ellipse at 0% 100%, hsl(270 60% 20% / 0.4) 0%, transparent 50%),
+      hsl(270 50% 4%);
   }
 }
