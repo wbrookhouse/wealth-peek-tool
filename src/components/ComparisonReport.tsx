@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Mail, Check, X, Star, Calendar, Loader2, User } from 'lucide-react';
+import { Mail, Check, X, Star, Calendar, Loader2, User, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -42,6 +42,133 @@ export function ComparisonReport({
   const uncheckedServices = services.filter(s => !s.checked);
   const meetingLabel = MEETING_FREQUENCY_OPTIONS.find(o => o.value === meetingsPerYear)?.label || 'Unknown';
   const showCTA = totalFees > 3500;
+
+  const generateReportHtml = () => {
+    const greeting = userInfo?.firstName ? `Hi ${userInfo.firstName},` : 'Hello,';
+    const investmentRows = investments
+      .filter(inv => inv.mer !== null)
+      .map(inv => `
+        <tr>
+          <td style="padding: 12px; border-bottom: 1px solid #e5e5e5;">
+            <strong style="color: #22c55e;">${inv.fundCode}</strong><br>
+            <span style="color: #6b7280; font-size: 12px;">${inv.fundName}</span>
+          </td>
+          <td style="padding: 12px; border-bottom: 1px solid #e5e5e5; text-align: right;">${formatCurrency(inv.amount)}</td>
+          <td style="padding: 12px; border-bottom: 1px solid #e5e5e5; text-align: right;">${formatPercent(inv.mer!)}</td>
+          <td style="padding: 12px; border-bottom: 1px solid #e5e5e5; text-align: right; font-weight: 600;">${formatCurrency(inv.annualFee!)}</td>
+        </tr>
+      `).join('');
+
+    const servicesReceivedHtml = checkedServices.length > 0
+      ? checkedServices.map(s => `<li style="margin: 4px 0;">&#10003; ${s.name}</li>`).join('')
+      : '<li style="color: #6b7280; font-style: italic;">No services selected</li>';
+
+    const servicesNotReceivedHtml = uncheckedServices.length > 0
+      ? uncheckedServices.map(s => `<li style="margin: 4px 0; color: #6b7280;">&#10007; ${s.name}</li>`).join('')
+      : '<li style="color: #22c55e;">You\'re receiving all services!</li>';
+
+    return `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WealthPeek Fee Report - ${formatCurrency(totalFees)}/year</title>
+</head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f9fafb; margin: 0; padding: 20px;">
+  <div style="max-width: 600px; margin: 0 auto; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+    <div style="background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); padding: 32px; text-align: center;">
+      <h1 style="color: white; margin: 0; font-size: 28px;">Your Fee Report</h1>
+      <p style="color: #94a3b8; margin: 8px 0 0 0;">WealthPeek Investment Analysis</p>
+    </div>
+    <div style="padding: 32px;">
+      <p style="color: #374151; font-size: 16px; line-height: 1.6;">${greeting}</p>
+      <p style="color: #374151; font-size: 16px; line-height: 1.6;">
+        Here's a summary of your investment fees and services.
+      </p>
+      <div style="background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); border-radius: 12px; padding: 24px; text-align: center; margin: 24px 0;">
+        <p style="color: #94a3b8; margin: 0 0 8px 0; font-size: 14px;">Your Total Annual Fees</p>
+        <p style="color: #22c55e; font-size: 42px; font-weight: bold; margin: 0;">${formatCurrency(totalFees)}</p>
+        <p style="color: #6b7280; margin: 8px 0 0 0; font-size: 14px;">per year</p>
+        <div style="margin-top: 16px; color: #94a3b8; font-size: 14px;">
+          Total Invested: <strong style="color: white;">${formatCurrency(totalInvested)}</strong> &nbsp;|&nbsp;
+          Average MER: <strong style="color: white;">${formatPercent(weightedMER)}</strong>
+        </div>
+      </div>
+      <h2 style="color: #111827; font-size: 18px; margin: 32px 0 16px 0;">Your Investments</h2>
+      <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+        <thead>
+          <tr style="background: #f3f4f6;">
+            <th style="padding: 12px; text-align: left; color: #6b7280; font-weight: 500;">Fund</th>
+            <th style="padding: 12px; text-align: right; color: #6b7280; font-weight: 500;">Amount</th>
+            <th style="padding: 12px; text-align: right; color: #6b7280; font-weight: 500;">MER</th>
+            <th style="padding: 12px; text-align: right; color: #6b7280; font-weight: 500;">Annual Fee</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${investmentRows}
+          <tr style="font-weight: 600; background: #f9fafb;">
+            <td style="padding: 12px;">Total</td>
+            <td style="padding: 12px; text-align: right;">${formatCurrency(totalInvested)}</td>
+            <td style="padding: 12px; text-align: right;">${formatPercent(weightedMER)}</td>
+            <td style="padding: 12px; text-align: right; color: #22c55e;">${formatCurrency(totalFees)}</td>
+          </tr>
+        </tbody>
+      </table>
+      <div style="display: flex; gap: 24px; margin-top: 32px;">
+        <div style="flex: 1;">
+          <h3 style="color: #111827; font-size: 16px; margin: 0 0 12px 0;">Services You Receive</h3>
+          <ul style="list-style: none; padding: 0; margin: 0; font-size: 14px; color: #374151;">
+            ${servicesReceivedHtml}
+          </ul>
+          <p style="margin-top: 12px; font-size: 13px; color: #6b7280;">
+            Advisor meetings: <strong>${meetingLabel}</strong>
+          </p>
+        </div>
+        <div style="flex: 1;">
+          <h3 style="color: #111827; font-size: 16px; margin: 0 0 12px 0;">Services Not Received</h3>
+          <ul style="list-style: none; padding: 0; margin: 0; font-size: 14px;">
+            ${servicesNotReceivedHtml}
+          </ul>
+        </div>
+      </div>
+      <div style="background: #f0fdf4; border-radius: 8px; padding: 20px; margin-top: 32px; text-align: center;">
+        <h3 style="color: #166534; margin: 0 0 12px 0;">Summary</h3>
+        <p style="color: #374151; margin: 0; font-size: 14px; line-height: 1.8;">
+          You are paying <strong style="color: #22c55e;">${formatCurrency(totalFees)}</strong> per year in fees<br>
+          You are receiving <strong>${checkedServices.length}</strong> of ${services.length} possible services<br>
+          You meet with your advisor <strong>${meetingLabel.toLowerCase()}</strong>
+        </p>
+      </div>
+      ${showCTA ? `
+      <div style="background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%); border-radius: 8px; padding: 24px; margin-top: 24px; text-align: center;">
+        <p style="color: white; font-size: 18px; font-weight: 600; margin: 0 0 8px 0;">There may be a better way.</p>
+        <p style="color: rgba(255,255,255,0.9); font-size: 14px; margin: 0;">Would you like to learn more? Contact us to schedule a consultation.</p>
+      </div>
+      ` : ''}
+    </div>
+    <div style="background: #f3f4f6; padding: 20px; text-align: center;">
+      <p style="color: #6b7280; font-size: 12px; margin: 0;">
+        This report was generated by WealthPeek. The information provided is for educational purposes only.
+      </p>
+    </div>
+  </div>
+</body>
+</html>`;
+  };
+
+  const handleDownloadReport = () => {
+    const html = generateReportHtml();
+    const blob = new Blob([html], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `WealthPeek-Fee-Report-${new Date().toISOString().slice(0, 10)}.html`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast.success('Report downloaded!');
+  };
 
   const handleEmailReport = async () => {
     if (!email.trim() || !email.includes('@')) {
@@ -252,24 +379,34 @@ export function ComparisonReport({
         </div>
       </Card>
 
-      {/* Email Report Section */}
+      {/* Download & Email Report Section */}
       <Card className="p-6 bg-card/50 backdrop-blur border-primary/20 shadow-green">
         <div className="flex items-center gap-3 mb-4">
-          <Mail className="w-6 h-6 text-primary" />
+          <Download className="w-6 h-6 text-primary" />
           <h3 className="font-display text-lg font-semibold">Get Your Full Report</h3>
         </div>
-        
-        {emailSent ? (
-          <div className="text-center py-4">
-            <Check className="w-12 h-12 text-green-500 mx-auto mb-2" />
-            <p className="text-lg font-medium">Report sent!</p>
-            <p className="text-sm text-muted-foreground">Check your inbox for the full report.</p>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            <p className="text-muted-foreground text-sm">
-              Enter your email to receive a detailed copy of this report{showCTA && ', including personalized recommendations'}.
-            </p>
+
+        <div className="space-y-4">
+          <p className="text-muted-foreground text-sm">
+            Download a detailed copy of this report{showCTA && ', including personalized recommendations'}.
+          </p>
+          <Button
+            onClick={handleDownloadReport}
+            className="w-full bg-gradient-green hover:opacity-90 text-primary-foreground font-semibold shadow-green gap-2"
+          >
+            <Download className="w-4 h-4" />
+            Download Report
+          </Button>
+        </div>
+
+        <div className="border-t border-border/50 mt-4 pt-4">
+          <p className="text-muted-foreground text-xs mb-3">Or send it to your email:</p>
+          {emailSent ? (
+            <div className="text-center py-2">
+              <Check className="w-8 h-8 text-green-500 mx-auto mb-1" />
+              <p className="text-sm font-medium">Report sent!</p>
+            </div>
+          ) : (
             <div className="flex gap-3">
               <Input
                 type="email"
@@ -278,10 +415,11 @@ export function ComparisonReport({
                 onChange={(e) => setEmail(e.target.value)}
                 className="bg-background/50 border-border/50 focus:border-primary flex-1"
               />
-              <Button 
+              <Button
                 onClick={handleEmailReport}
                 disabled={isSending}
-                className="bg-gradient-green hover:opacity-90 text-primary-foreground font-semibold shadow-green gap-2"
+                variant="outline"
+                className="gap-2"
               >
                 {isSending ? (
                   <>
@@ -291,13 +429,13 @@ export function ComparisonReport({
                 ) : (
                   <>
                     <Mail className="w-4 h-4" />
-                    Email Report
+                    Email
                   </>
                 )}
               </Button>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </Card>
     </div>
   );
