@@ -1,9 +1,9 @@
-import { useState } from 'react';
-import { Mail, Check, X, Star, Calendar, Loader2 } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Mail, Check, X, Star, Calendar, Loader2, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Investment, ServiceItem, MEETING_FREQUENCY_OPTIONS } from '@/types/calculator';
+import { Investment, ServiceItem, MEETING_FREQUENCY_OPTIONS, UserInfo } from '@/types/calculator';
 import { formatCurrency, formatPercent } from '@/lib/fundLookup';
 import { toast } from 'sonner';
 
@@ -14,6 +14,7 @@ interface ComparisonReportProps {
   totalInvested: number;
   totalFees: number;
   weightedMER: number;
+  userInfo: UserInfo | null;
 }
 
 export function ComparisonReport({
@@ -22,11 +23,19 @@ export function ComparisonReport({
   meetingsPerYear,
   totalInvested,
   totalFees,
-  weightedMER
+  weightedMER,
+  userInfo
 }: ComparisonReportProps) {
   const [email, setEmail] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
+
+  // Pre-fill email from userInfo if available
+  useEffect(() => {
+    if (userInfo?.email) {
+      setEmail(userInfo.email);
+    }
+  }, [userInfo]);
 
   const checkedServices = services.filter(s => s.checked);
   const uncheckedServices = services.filter(s => !s.checked);
@@ -54,11 +63,18 @@ export function ComparisonReport({
       {/* Header */}
       <div className="text-center">
         <h2 className="font-display text-2xl md:text-3xl font-bold">
-          Your <span className="text-gradient-green">Fee Report</span>
+          {userInfo?.firstName ? `${userInfo.firstName}'s ` : 'Your '}<span className="text-gradient-green">Fee Report</span>
         </h2>
         <p className="text-muted-foreground">
           Review your current fees and services
         </p>
+        {userInfo?.email && (
+          <div className="inline-flex items-center gap-2 mt-2 px-3 py-1.5 rounded-full bg-primary/10 text-sm">
+            <User className="w-4 h-4 text-primary" />
+            <span className="text-muted-foreground">Report for:</span>
+            <span className="font-medium text-foreground">{userInfo.email}</span>
+          </div>
+        )}
       </div>
 
       {/* Total Fees Highlight */}
