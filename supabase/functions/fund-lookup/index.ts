@@ -451,7 +451,8 @@ Deno.serve(async (req) => {
       );
     }
 
-    const cleanedCode = fundCode.trim().toUpperCase();
+    // Remove spaces and normalize the fund code
+    const cleanedCode = fundCode.trim().replace(/\s+/g, '').toUpperCase();
 
     if (cleanedCode.length < 2 || cleanedCode.length > 20) {
       return new Response(
