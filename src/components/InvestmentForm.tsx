@@ -74,7 +74,11 @@ export function InvestmentForm({
         </p>
       </div>
 
-      <Card className="p-6 bg-card/50 backdrop-blur border-border/50">
+      <Card className="p-6 bg-card/50 backdrop-blur border-primary/30 shadow-green">
+        <div className="flex items-center gap-2 mb-4">
+          <Plus className="w-5 h-5 text-primary" />
+          <h3 className="font-semibold text-lg">Add a Fund</h3>
+        </div>
         <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-4">
           <div className="flex-1">
             <label htmlFor="fundCode" className="text-sm font-medium text-muted-foreground mb-1.5 block">
@@ -111,13 +115,14 @@ export function InvestmentForm({
             <Button 
               type="submit" 
               disabled={!fundCode.trim() || !amount || isLoading}
-              className="w-full sm:w-auto bg-gradient-green hover:opacity-90 text-primary-foreground font-semibold shadow-green"
+              size="lg"
+              className="w-full sm:w-auto bg-gradient-green hover:opacity-90 text-primary-foreground font-semibold shadow-green px-8"
             >
               {isLoading ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
               ) : (
                 <>
-                  <Plus className="w-4 h-4 mr-2" />
+                  <Plus className="w-5 h-5 mr-2" />
                   Add Fund
                 </>
               )}
